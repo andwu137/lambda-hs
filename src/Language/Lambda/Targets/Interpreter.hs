@@ -61,7 +61,8 @@ loop (InterConfig{prefix}) =
     go = do
         -- liftIO . print . debugSymbolTable =<< get
         liftIO $ putStr prefix
-        liftIO (T.pack <$> getLine) >>= handleLine
+        liftIO (T.pack <$> getLine) >>= \line ->
+            catchE (handleLine line) $ liftIO . printError
         go
 
 handleLine :: T.Text -> InterT IO ()
