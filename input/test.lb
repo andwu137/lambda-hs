@@ -6,3 +6,6 @@ fac = \x ->
     if (x==0)
         1
         (x * fac (x-1));
+
+fib = fib' 0 1;
+fib' = \x -> \y -> \n -> if (n==0) x (fib' y (x+y) (n-1));
