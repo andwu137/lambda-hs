@@ -92,8 +92,8 @@ strIdent =
   where
     followChar = P.alphaNumChar <|> P.choice (P.char <$> ['\'', '_'])
 
-operator :: Parser T.Text
-operator =
+oper :: Parser T.Text
+oper =
     lexeme . fmap T.concat . P.some $
         P.choice
             ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-", "~"]
@@ -149,7 +149,7 @@ r =
 
 {- Structures -}
 expr :: Parser Expr
-expr = P.label "Expression" $ P.choice [oper, abs, app]
+expr = P.label "Expression" $ P.choice [app, abs]
 
 abs :: Parser Expr
 abs =
@@ -158,24 +158,16 @@ abs =
             <$> (absOpen *> lexeme strIdent <* absClose)
             <*> expr
 
-oper :: Parser Expr
-oper =
-    P.label "Operator" $ term `chainl1` (Op <$> operator)
-  where
-    term =
-        P.choice
-            [ paren (P.choice [oper, abs, term])
-            , app
-            , atom
-            ]
-
 app :: Parser Expr
 app =
-    P.label "Application" $ term `chainl1` pure App
+    P.label "Application" $
+        term
+            `chainl1` pure App
+            `chainl1` (Op <$> oper)
   where
     term =
         P.choice
-            [ paren (P.choice [oper, app, abs, term])
+            [ P.try $ paren (P.choice [app, abs, term])
             , atom
             ]
 
