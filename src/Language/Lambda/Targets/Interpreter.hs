@@ -1,4 +1,5 @@
 module Language.Lambda.Targets.Interpreter (
+    InterConfig (..),
     runInterpreterSingle,
     runInterpreter,
     interpreter,
@@ -19,20 +20,25 @@ import System.IO
 import qualified Text.Megaparsec as P
 import Prelude hiding (div, lookup)
 
+data InterConfig = InterConfig {prefix :: String}
+    deriving (Show, Eq)
+
 runInterpreterSingle :: T.Text -> IO ()
 runInterpreterSingle s = do
     res <- runInterT (handleLine s) defaultSymbolTable
     either print pure res
 
-runInterpreter :: String -> IO ()
-runInterpreter filename = do
-    res <- runInterT (interpreter filename) defaultSymbolTable
+runInterpreter :: InterConfig -> String -> IO ()
+runInterpreter conf filename = do
+    res <- runInterT (interpreter conf filename) defaultSymbolTable
     either print pure res
 
-interpreter :: String -> InterT IO ()
-interpreter filename = do
+interpreter :: InterConfig -> String -> InterT IO ()
+interpreter conf filename = do
+    liftIO $ hSetBuffering stdout NoBuffering
+    liftIO $ hSetBuffering stdin LineBuffering
     runFile filename . T.pack =<< liftIO (readFile filename)
-    loop
+    loop conf
 
 runFile :: String -> T.Text -> InterT IO ()
 runFile filename inp = do
@@ -46,13 +52,15 @@ runFile filename inp = do
                     throwE $ "Unexpected: " <> x'
             InterT $ S.modify (<> M.fromList st)
 
-loop :: InterT IO ()
-loop = do
-    liftIO $ hSetBuffering stdin LineBuffering
-    -- liftIO . print . debugSymbolTable =<< get
-    liftIO $ putStr ">>> "
-    liftIO (T.pack <$> getLine) >>= handleLine
-    loop
+loop :: InterConfig -> InterT IO ()
+loop (InterConfig{prefix}) =
+    go
+  where
+    go = do
+        -- liftIO . print . debugSymbolTable =<< get
+        liftIO $ putStr prefix
+        liftIO (T.pack <$> getLine) >>= handleLine
+        go
 
 handleLine :: T.Text -> InterT IO ()
 handleLine s =
