@@ -7,7 +7,7 @@ module Language.Lambda.Targets.Interpreter (
     loop,
 ) where
 
-import Control.Monad (forM)
+import Control.Monad (forM, (>=>))
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Control.Monad.Trans.State as S
 import qualified Data.Map as M
@@ -72,34 +72,17 @@ handleStatement :: Statement -> InterT IO ()
 handleStatement = \case
     Assign x y -> InterT $ S.modify (M.insert x (Const y))
     Effect x ->
-        eval x >>= \case
+        whnf x >>= \case
             Builtin _ -> liftIO $ putStrLn "Unable to print built-in"
             Const e -> liftIO . putStrLn . T.unpack =<< display e
 
 display :: Expr -> InterT IO T.Text
-display e =
-    case e of
+display =
+    eval >=> \case
         Bool b -> pure $ T.pack $ show b
         Unit -> pure $ T.pack $ show ()
         Z x -> pure $ T.pack $ show x
         R x -> pure $ T.pack $ show x
         String x -> pure $ T.pack x
-        Ident i -> do
-            let unresolved = show $ Ident i
-            out <-
-                catchE (lookup i) $
-                    pure . const (Const $ String unresolved)
-            case out of
-                Builtin _ -> pure $ T.concat ["Function(", i, ")"]
-                Const c -> display c
-        Abs x b -> do
-            b' <- T.pack . show <$> evalNoBuiltin b
-            pure $ T.concat ["(\\", x, " -> ", b', ")"]
-        App f x ->
-            eval (App f x) >>= \case
-                Builtin _ -> pure "Unable to print builtin"
-                Const c -> display c
-        Op o x y -> do
-            eval (Op o x y) >>= \case
-                Builtin _ -> pure "Unable to print builtin"
-                Const c -> display c
+        Abs{} -> throwE "Unable to print abstraction"
+        e -> eval e >>= display

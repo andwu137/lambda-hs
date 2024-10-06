@@ -33,8 +33,8 @@ defaultSymbolTable =
         ]
   where
     cmp f x y = do
-        x' <- evalNoBuiltin x
-        y' <- evalNoBuiltin y
+        x' <- eval x
+        y' <- eval y
         pure $ Const $ Bool (f x' y')
 
 curry2 :: (Monad m) => (Expr -> Expr -> InterT m (Output m)) -> Expr -> InterT m (Output m)
@@ -47,7 +47,7 @@ cast = undefined -- TODO: cast function
 
 if' :: Expr -> Expr -> Expr -> InterT IO (Output IO)
 if' b x y = do
-    b' <- evalNoBuiltin b
+    b' <- eval b
     case b' of
         (Bool p) -> pure $ if p then Const x else Const y
         _ -> throwE "if: Expected boolean for condition"
@@ -70,12 +70,12 @@ myShow =
         String x -> pure x
         i@(Ident{}) -> pure $ show i
         a@(Abs{}) -> pure $ show a
-        a@(App{}) -> myShow =<< evalNoBuiltin a
-        o@(Op{}) -> myShow =<< evalNoBuiltin o
+        a@(App{}) -> myShow =<< eval a
+        o@(Op{}) -> myShow =<< eval o
 
 add :: Expr -> Expr -> InterT IO (Output IO)
 add x y =
-    join $ add' <$> evalNoBuiltin x <*> evalNoBuiltin y
+    join $ add' <$> eval x <*> eval y
   where
     add' = \cases
         (Z a) (Z b) -> pure $ Const $ Z (a + b)
@@ -85,7 +85,7 @@ add x y =
 mul :: Expr -> Expr -> InterT IO (Output IO)
 mul x y =
     join $
-        mul' <$> evalNoBuiltin x <*> evalNoBuiltin y
+        mul' <$> eval x <*> eval y
   where
     mul' = \cases
         (Z a) (Z b) -> pure $ Const $ Z (a * b)
@@ -94,7 +94,7 @@ mul x y =
 
 div :: Expr -> Expr -> InterT IO (Output IO)
 div x y =
-    join $ div' <$> evalNoBuiltin x <*> evalNoBuiltin y
+    join $ div' <$> eval x <*> eval y
   where
     div' = \cases
         (Z a) (Z b) -> pure $ Const $ Z (a `Prelude.div` b)
@@ -103,7 +103,7 @@ div x y =
 
 sub :: Expr -> Expr -> InterT IO (Output IO)
 sub x y =
-    join $ sub' <$> evalNoBuiltin x <*> evalNoBuiltin y
+    join $ sub' <$> eval x <*> eval y
   where
     sub' = \cases
         (Z a) (Z b) -> pure $ Const $ Z (a - b)
