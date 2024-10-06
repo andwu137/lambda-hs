@@ -52,7 +52,7 @@ throwE :: (Monad m) => T.Text -> InterT m a
 throwE = InterT . lift . E.throwE
 
 catchE :: (Monad m) => InterT m a -> (T.Text -> InterT m a) -> InterT m a
-catchE x f = get >>= lift . runInterT x >>= either f pure
+catchE x f = either f pure =<< lift . evalInterT x =<< get
 
 runInterT :: (Monad m) => InterT m a -> SymbolTable m -> m (Either T.Text a)
 runInterT i st = E.runExceptT . flip S.evalStateT st . unInterT $ i
