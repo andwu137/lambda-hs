@@ -33,7 +33,7 @@ data Output m
 
 debugSymbolTable :: M.Map T.Text (Output m) -> M.Map T.Text Expr
 debugSymbolTable = fmap $ \case
-    Builtin _ -> String "Built-In"
+    Builtin _ -> Ident "Built-In"
     Const c -> c
 
 {- Inter -}
