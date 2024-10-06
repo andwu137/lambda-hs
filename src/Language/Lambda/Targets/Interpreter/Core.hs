@@ -3,6 +3,7 @@ module Language.Lambda.Targets.Interpreter.Core (
     Output (..),
     InterT (..),
     runInterT,
+    evalInterT,
     get,
     put,
     throwE,
@@ -54,8 +55,11 @@ throwE = InterT . lift . E.throwE
 catchE :: (Monad m) => InterT m a -> (T.Text -> InterT m a) -> InterT m a
 catchE x f = either f pure =<< lift . evalInterT x =<< get
 
-runInterT :: (Monad m) => InterT m a -> SymbolTable m -> m (Either T.Text a)
-runInterT i st = E.runExceptT . flip S.evalStateT st . unInterT $ i
+runInterT :: InterT m a -> SymbolTable m -> m (Either T.Text (a, SymbolTable m))
+runInterT i st = E.runExceptT . flip S.runStateT st . unInterT $ i
+
+evalInterT :: (Monad m) => InterT m a -> SymbolTable m -> m (Either T.Text a)
+evalInterT i st = E.runExceptT . flip S.evalStateT st . unInterT $ i
 
 lookup :: (Monad m) => T.Text -> InterT m (Output m)
 lookup sym = do

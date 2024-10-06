@@ -7,7 +7,7 @@ module Language.Lambda.Targets.Interpreter (
     loop,
 ) where
 
-import Control.Monad (forM, (>=>))
+import Control.Monad (forM, void, (>=>))
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Control.Monad.Trans.State as S
 import qualified Data.Map as M
@@ -20,18 +20,20 @@ import System.IO
 import qualified Text.Megaparsec as P
 import Prelude hiding (div, lookup)
 
+printError :: T.Text -> IO ()
+printError = putStrLn . T.unpack
+
 data InterConfig = InterConfig {prefix :: String}
     deriving (Show, Eq)
 
 runInterpreterSingle :: T.Text -> IO ()
 runInterpreterSingle s = do
-    res <- runInterT (handleLine s) defaultSymbolTable
-    either print pure res
+    res <- evalInterT (handleLine s) defaultSymbolTable
+    either printError pure res
 
 runInterpreter :: InterConfig -> String -> IO ()
 runInterpreter conf filename = do
-    res <- runInterT (interpreter conf filename) defaultSymbolTable
-    either print pure res
+    void $ evalInterT (interpreter conf filename) defaultSymbolTable
 
 interpreter :: InterConfig -> String -> InterT IO ()
 interpreter conf filename = do
