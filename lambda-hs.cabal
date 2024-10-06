@@ -25,6 +25,11 @@ source-repository head
 
 library
   exposed-modules:
+      Language.Lambda.Expr
+      Language.Lambda.Targets.Interpreter
+      Language.Lambda.Targets.Interpreter.Core
+      Language.Lambda.Targets.Interpreter.Reduction
+      Language.Lambda.Targets.Interpreter.SymbolTable
   other-modules:
       Paths_lambda_hs
   autogen-modules:
