@@ -8,3 +8,6 @@
 - add more commandline options
 - add a test suite for the parser and evaluation
 - improve error messages
+- Add precedence parsing for operators
+- Add associativity for operators
+- Allow cool syntax for definitions of infix functions
