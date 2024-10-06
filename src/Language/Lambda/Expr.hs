@@ -94,9 +94,10 @@ strIdent =
 
 oper :: Parser T.Text
 oper =
-    lexeme . fmap T.concat . P.some $
-        P.choice
-            ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-", "~"]
+    P.label "operator" $
+        lexeme . fmap T.concat . P.some $
+            P.choice
+                ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-", "~"]
 
 {- Atoms -}
 atom :: Parser Expr
@@ -149,7 +150,7 @@ r =
 
 {- Structures -}
 expr :: Parser Expr
-expr = P.label "Expression" $ P.choice [app, abs]
+expr = P.choice [app, abs]
 
 abs :: Parser Expr
 abs =
@@ -160,10 +161,9 @@ abs =
 
 app :: Parser Expr
 app =
-    P.label "Application" $
-        term
-            `chainl1` pure App
-            `chainl1` (Op <$> oper)
+    term
+        `chainl1` pure App
+        `chainl1` (Op <$> oper)
   where
     term =
         P.choice
