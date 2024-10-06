@@ -21,6 +21,10 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- megaparsec
+- text
+- transformers
+- containers
 
 ghc-options:
 - -Wall
@@ -35,6 +39,14 @@ ghc-options:
 
 library:
   source-dirs: src
+  default-extensions:
+    TupleSections
+    , OverloadedStrings
+    , DeriveFunctor
+    , GeneralisedNewtypeDeriving
+    , RecordWildCards
+    , NamedFieldPuns
+    , LambdaCase
 
 executables:
   lambda-hs-exe:

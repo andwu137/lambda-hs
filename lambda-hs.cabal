@@ -25,16 +25,21 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
   other-modules:
       Paths_lambda_hs
   autogen-modules:
       Paths_lambda_hs
   hs-source-dirs:
       src
+  default-extensions:
+      TupleSections , OverloadedStrings , DeriveFunctor , GeneralisedNewtypeDeriving , RecordWildCards , NamedFieldPuns , LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , containers
+    , megaparsec
+    , text
+    , transformers
   default-language: Haskell2010
 
 executable lambda-hs-exe
@@ -48,7 +53,11 @@ executable lambda-hs-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , lambda-hs
+    , megaparsec
+    , text
+    , transformers
   default-language: Haskell2010
 
 test-suite lambda-hs-test
@@ -63,5 +72,9 @@ test-suite lambda-hs-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , lambda-hs
+    , megaparsec
+    , text
+    , transformers
   default-language: Haskell2010
