@@ -6,6 +6,7 @@ module Language.Lambda.Targets.Interpreter.Core (
     evalInterT,
     get,
     put,
+    modify,
     throwE,
     catchE,
     lookup,
@@ -49,6 +50,9 @@ get = InterT S.get
 
 put :: (Monad m) => SymbolTable m -> InterT m ()
 put = InterT . S.put
+
+modify :: (Monad m) => (SymbolTable m -> SymbolTable m) -> InterT m ()
+modify = InterT . S.modify
 
 throwE :: (Monad m) => T.Text -> InterT m a
 throwE = InterT . lift . E.throwE

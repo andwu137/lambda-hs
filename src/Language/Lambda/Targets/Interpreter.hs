@@ -9,7 +9,6 @@ module Language.Lambda.Targets.Interpreter (
 
 import Control.Monad (forM, void, (>=>))
 import Control.Monad.IO.Class (MonadIO (..))
-import qualified Control.Monad.Trans.State as S
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Language.Lambda.Expr
@@ -52,7 +51,7 @@ runFile filename inp = do
                 Effect x -> do
                     x' <- display x
                     throwE $ "Unexpected: " <> x'
-            InterT $ S.modify (<> M.fromList st)
+            modify (<> M.fromList st) -- TODO: Error on duplicates
 
 loop :: InterConfig -> InterT IO ()
 loop (InterConfig{prefix}) =
@@ -73,7 +72,7 @@ handleLine s =
 
 handleStatement :: Statement -> InterT IO ()
 handleStatement = \case
-    Assign x y -> InterT $ S.modify (M.insert x (Const y))
+    Assign x y -> modify (M.insert x (Const y))
     Effect x ->
         whnf x >>= \case
             Builtin _ -> liftIO $ putStrLn "Unable to print built-in"
