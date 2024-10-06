@@ -17,6 +17,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans (..))
 import qualified Control.Monad.Trans.Except as E
 import qualified Control.Monad.Trans.State as S
+import Data.Functor (($>))
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Language.Lambda.Expr
@@ -53,7 +54,11 @@ throwE :: (Monad m) => T.Text -> InterT m a
 throwE = InterT . lift . E.throwE
 
 catchE :: (Monad m) => InterT m a -> (T.Text -> InterT m a) -> InterT m a
-catchE x f = either f pure =<< lift . evalInterT x =<< get
+catchE x f = do
+    res <- lift . runInterT x =<< get
+    case res of
+        Left e -> f e
+        Right (a, st) -> put st $> a
 
 runInterT :: InterT m a -> SymbolTable m -> m (Either T.Text (a, SymbolTable m))
 runInterT i st = E.runExceptT . flip S.runStateT st . unInterT $ i
