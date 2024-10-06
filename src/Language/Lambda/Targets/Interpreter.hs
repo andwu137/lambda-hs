@@ -67,7 +67,7 @@ loop (InterConfig{prefix}) =
 handleLine :: T.Text -> InterT IO ()
 handleLine s =
     case P.parse (lambdaLine <* P.eof) "lambda-interpreter" s of
-        Left e -> liftIO $ putStrLn $ P.errorBundlePretty e
+        Left e -> throwE . T.pack $ P.errorBundlePretty e
         Right x -> handleStatement x
 
 handleStatement :: Statement -> InterT IO ()
@@ -75,7 +75,7 @@ handleStatement = \case
     Assign x y -> modify (M.insert x (Const y))
     Effect x ->
         whnf x >>= \case
-            Builtin _ -> liftIO $ putStrLn "Unable to print built-in"
+            Builtin _ -> throwE "Unable to print built-in"
             Const e -> liftIO . putStrLn . T.unpack =<< display e
 
 display :: Expr -> InterT IO T.Text
