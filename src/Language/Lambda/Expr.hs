@@ -84,13 +84,14 @@ parenRec p =
 
 strIdent :: Parser T.Text
 strIdent =
-    lexeme
-        ( T.cons
-            <$> P.letterChar
-            <*> (T.pack <$> P.many followChar)
-        )
+    lexeme $ standard <|> infixToPrefix
   where
     followChar = P.alphaNumChar <|> P.choice (P.char <$> ['\'', '_'])
+    standard =
+        T.cons
+            <$> P.letterChar
+            <*> (T.pack <$> P.many followChar)
+    infixToPrefix = P.between (symbol "(") (symbol ")") oper
 
 oper :: Parser T.Text
 oper =
