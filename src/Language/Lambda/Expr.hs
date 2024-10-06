@@ -83,14 +83,20 @@ parenRec p =
         pure x
 
 strIdent :: Parser T.Text
-strIdent = lexeme (T.cons <$> P.letterChar <*> (T.pack <$> P.many P.alphaNumChar))
+strIdent =
+    lexeme
+        ( T.cons
+            <$> P.letterChar
+            <*> (T.pack <$> P.many followChar)
+        )
+  where
+    followChar = P.alphaNumChar <|> P.choice (P.char <$> ['\'', '_'])
 
 operator :: Parser T.Text
 operator =
     lexeme . fmap T.concat . P.some $
-        P.choice $
-            symbol
-                <$> ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-", "~"]
+        P.choice
+            ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-", "~"]
 
 {- Atoms -}
 atom :: Parser Expr
