@@ -41,7 +41,14 @@ tryBeta :: Expr -> Expr -> InterT IO (Output IO)
 tryBeta = \cases
     (Ident sym) inp -> lookupApply sym inp
     (Abs x b) inp -> pure . Const $ beta b x inp
+    x@(App{}) y -> whnfFirst x y
+    x@(Op{}) y -> whnfFirst x y
     _ _ -> throwE "Left hand side of application is not an abstraction nor Identifier"
+  where
+    whnfFirst x y =
+        whnf x >>= \case
+            Builtin f -> f y
+            Const e -> tryBeta e y
 
 whnf :: Expr -> InterT IO (Output IO)
 whnf =
