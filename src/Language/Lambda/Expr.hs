@@ -152,12 +152,16 @@ r =
 expr :: Parser Expr
 expr = P.choice [app, abs]
 
+args :: Parser (Expr -> Expr)
+args =
+    P.label "arguments" $
+        foldl (\f x -> f . Abs x) id
+            <$> P.some (lexeme strIdent)
+
 abs :: Parser Expr
 abs =
-    P.label "Abstraction" $
-        Abs
-            <$> (absOpen *> lexeme strIdent <* absClose)
-            <*> expr
+    (absOpen *> args <* absClose)
+        <*> expr
 
 app :: Parser Expr
 app =
@@ -181,8 +185,11 @@ lambdaLine = P.try assign <|> (Effect <$> expr)
 
 assign :: Parser Statement
 assign =
-    P.label "assignment" $
-        liftA2
-            Assign
-            (P.try strIdent <* lexeme (P.string "="))
-            (expr <* lexeme (P.char ';'))
+    Assign
+        <$> P.try strIdent
+        <*> do
+            ma <- P.optional args
+            void $ lexeme (P.string "=")
+            case ma of
+                Nothing -> expr <* lexeme (P.optional (P.char ';'))
+                Just a -> a <$> expr <* lexeme (P.optional (P.char ';'))
