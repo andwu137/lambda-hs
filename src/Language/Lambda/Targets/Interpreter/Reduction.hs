@@ -89,12 +89,8 @@ eval e =
         z@(Z{}) -> pure z
         r@(R{}) -> pure r
         s@(String{}) -> pure s
-        Ident i -> do
-            let unresolved = show $ Ident i
-            out <-
-                catchE (lookup i) $
-                    pure . const (Const $ String unresolved)
-            case out of
+        Ident i ->
+            lookup i >>= \case
                 Builtin _ -> throwE "Unable to eval builtin"
                 Const c -> eval c
         Abs _ _ -> throwE "Unable to eval abstraction"
