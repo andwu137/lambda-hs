@@ -32,7 +32,8 @@ runInterpreterSingle s = do
 
 runInterpreter :: InterConfig -> String -> IO ()
 runInterpreter conf filename = do
-    void $ evalInterT (interpreter conf filename) defaultSymbolTable
+    res <- evalInterT (interpreter conf filename) defaultSymbolTable
+    either printError pure res
 
 interpreter :: InterConfig -> String -> InterT IO ()
 interpreter conf filename = do
