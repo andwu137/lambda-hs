@@ -157,7 +157,7 @@ args :: Parser (Expr -> Expr)
 args =
     P.label "arguments" $
         foldl (\f x -> f . Abs x) id
-            <$> P.some (lexeme strIdent)
+            <$> P.many (lexeme strIdent)
 
 abs :: Parser Expr
 abs =
@@ -189,8 +189,6 @@ assign =
     Assign
         <$> P.try strIdent
         <*> do
-            ma <- P.optional args
+            a <- args
             void $ lexeme (P.string "=")
-            case ma of
-                Nothing -> expr <* lexeme (P.optional (P.char ';'))
-                Just a -> a <$> expr <* lexeme (P.optional (P.char ';'))
+            a <$> expr <* symbol ";"
