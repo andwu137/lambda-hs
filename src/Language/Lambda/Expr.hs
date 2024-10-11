@@ -50,6 +50,12 @@ chainl1 p o =
   where
     rest x = P.try (o <*> pure x <*> p >>= rest) <|> pure x
 
+chainr1 :: (P.MonadParsec e s m) => m a -> m (a -> a -> a) -> m a
+chainr1 p o =
+    p >>= rest
+  where
+    rest x = P.try (o <*> pure x <*> (p >>= rest)) <|> pure x
+
 {- Syntax -}
 lineComment :: Parser a
 lineComment = P.empty
@@ -91,14 +97,22 @@ strIdent =
         T.cons
             <$> P.letterChar
             <*> (T.pack <$> P.many followChar)
-    infixToPrefix = P.between (symbol "(") (symbol ")") oper
+    infixToPrefix = P.between (symbol "(") (symbol ")") (operL <|> operR)
 
-oper :: Parser T.Text
-oper =
-    P.label "operator" $
-        lexeme . fmap T.concat . P.some $
-            P.choice
-                ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-", "~"]
+oper :: (Foldable f) => f (Parser T.Text) -> Parser T.Text
+oper ps =
+    lexeme . fmap T.concat . P.some $
+        P.choice ps
+
+operL :: Parser T.Text
+operL =
+    P.label "operatorL" $
+        oper ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
+
+operR :: Parser T.Text
+operR =
+    P.label "operatorR" $
+        P.char '~' *> oper ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
 
 {- Atoms -}
 atom :: Parser Expr
@@ -168,7 +182,8 @@ app :: Parser Expr
 app =
     term
         `chainl1` pure App
-        `chainl1` (Op <$> oper)
+        `chainl1` (Op <$> operL)
+        `chainr1` (Op <$> operR)
   where
     term =
         P.choice
