@@ -179,7 +179,7 @@ app =
 {- Statements -}
 -- TODO: Error messages
 lambdaFile :: Parser [Statement]
-lambdaFile = P.many lambdaLine <* P.eof
+lambdaFile = P.many assign <* P.eof
 
 lambdaLine :: Parser Statement
 lambdaLine = P.try assign <|> (Effect <$> expr)
