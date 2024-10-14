@@ -78,10 +78,10 @@ blockComment :: Parser a
 blockComment = P.empty
 
 absOpen :: Parser T.Text
-absOpen = lexeme (P.string "\\")
+absOpen = symbol "\\"
 
 absClose :: Parser T.Text
-absClose = lexeme (P.string "->")
+absClose = symbol "->"
 
 optionalParen :: Parser a -> Parser a
 optionalParen p = P.try (paren p) <|> p
@@ -152,7 +152,7 @@ bool =
                     ]
 
 unit :: Parser Expr
-unit = P.label "Unit" $ lexeme (P.string "Unit") $> Unit
+unit = P.label "Unit" $ symbol "Unit" $> Unit
 
 string :: Parser Expr
 string =
@@ -224,5 +224,5 @@ assign =
         <$> P.try strIdent
         <*> do
             a <- args
-            void $ lexeme (P.string "=")
+            void $ symbol "="
             a <$> expr <* symbol ";"
