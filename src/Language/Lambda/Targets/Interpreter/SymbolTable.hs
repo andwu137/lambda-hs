@@ -89,7 +89,7 @@ showAbs = \case
     R x -> pure $ show x
     String x -> pure x
     Ident i -> pure $ T.unpack i
-    Abs f b -> showAbs b <&> \x -> concat ["(λ", T.unpack f, ". ", x, ")"]
+    Abs f b -> showAbs b <&> \x -> concat ["λ", T.unpack f, ". ", x]
     App ml mr -> do
         (\l r -> concat [tryParen ml l, " ", tryParen mr r])
             <$> showAbs ml
@@ -101,9 +101,9 @@ showAbs = \case
   where
     parens x = concat ["(", x, ")"]
     tryParen = \case
-        Abs{} -> parens
         Op{} -> parens
-        -- App{} -> parens
+        App{} -> parens
+        Abs{} -> parens
         _ -> id
 
 add :: Expr -> Expr -> InterT IO (Output IO)
