@@ -20,6 +20,7 @@ defaultSymbolTable =
         [ ("print", Builtin myPrint)
         , ("putStrLn", Builtin myPutStrLn)
         , ("show", Builtin $ fmap (Const . String) . myShow)
+        , ("printId", Builtin printId)
         , ("+", Builtin $ curry2 add)
         , ("-", Builtin $ curry2 sub)
         , ("*", Builtin $ curry2 mul)
@@ -52,6 +53,9 @@ if' b x y = do
     case b' of
         (Bool p) -> pure $ if p then Const x else Const y
         _ -> throwE "if: Expected boolean for condition"
+
+printId :: Expr -> InterT IO (Output IO)
+printId x = myPrint x $> Const x
 
 myPrint :: Expr -> InterT IO (Output IO)
 myPrint = myPutStrLn <=< fmap String . myShow
