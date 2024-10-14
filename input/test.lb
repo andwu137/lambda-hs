@@ -1,6 +1,7 @@
 s = \f -> \g -> \x -> f (g x) x;
 k = \x -> \y -> x;
 i = \x -> x;
+y = \f -> (\x -> f (x x)) (\x -> f (x x));
 joinArrow = \f x -> f x x;
 
 fac = \x ->
@@ -22,6 +23,8 @@ fib'' f g x =
     f (x-1) + g (x-2);
 
 fib''' = joinArrow fib'';
+
+fib'''' = y fib''';
 
 (~$) f x = f x;
 (.) f g x = f (g x);
