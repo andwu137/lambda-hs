@@ -9,13 +9,12 @@ module Language.Lambda.Targets.Interpreter.Reduction (
 ) where
 
 import Control.Monad ((>=>))
-import Control.Monad.IO.Class (MonadIO (..))
 import qualified Data.Text as T
 import Language.Lambda.Expr
 import Language.Lambda.Targets.Interpreter.Core
 import Prelude hiding (lookup)
 
-lookupApply :: T.Text -> Expr -> InterT IO (Output IO)
+lookupApply :: (Monad m) => T.Text -> Expr -> InterT m (Output m)
 lookupApply sym x =
     lookup sym >>= \case
         Const e -> tryBeta e x
@@ -37,20 +36,20 @@ beta b sym inp = case b of
     App f x -> App (beta f sym inp) (beta x sym inp)
     Op o x y -> Op o (beta x sym inp) (beta y sym inp)
 
-tryBeta :: Expr -> Expr -> InterT IO (Output IO)
+tryBeta :: (Monad m) => Expr -> Expr -> InterT m (Output m)
 tryBeta = \cases
     (Ident sym) inp -> lookupApply sym inp
     (Abs x b) inp -> pure . Const $ beta b x inp
     x@(App{}) y -> whnfFirst x y
     x@(Op{}) y -> whnfFirst x y
-    _ _ -> throwE "Left hand side of application is not an abstraction nor Identifier"
+    _ _ -> throwE "Left hand side of application is not an abstraction nor identifier"
   where
     whnfFirst x y =
         whnf x >>= \case
             Builtin f -> f y
             Const e -> tryBeta e y
 
-whnf :: Expr -> InterT IO (Output IO)
+whnf :: (Monad m) => Expr -> InterT m (Output m)
 whnf =
     \case
         App f x ->
@@ -67,13 +66,13 @@ whnf =
         f@(Builtin _) -> pure f
         Const c -> whnf c
 
-whnfConst :: Expr -> (Expr -> InterT IO ()) -> InterT IO ()
+whnfConst :: (Monad m) => Expr -> (Expr -> InterT m ()) -> InterT m ()
 whnfConst x f =
     whnf x >>= \case
-        Builtin _ -> liftIO $ putStrLn "Unable to print built-in"
+        Builtin _ -> throwE "Unable to print built-in"
         Const x' -> f x'
 
-whnfConstDef :: Expr -> InterT IO a -> (Expr -> InterT IO a) -> InterT IO a
+whnfConstDef :: (Monad m) => Expr -> InterT m a -> (Expr -> InterT m a) -> InterT m a
 whnfConstDef x d f =
     whnf x >>= \case
         Builtin _ -> d
@@ -81,9 +80,9 @@ whnfConstDef x d f =
         Const x'@(Op{}) -> whnfConstDef x' d f
         Const x' -> f x'
 
-eval :: Expr -> InterT IO Expr
-eval e =
-    case e of
+eval :: (Monad m) => Expr -> InterT m Expr
+eval =
+    \case
         b@(Bool{}) -> pure b
         u@Unit -> pure u
         z@(Z{}) -> pure z
