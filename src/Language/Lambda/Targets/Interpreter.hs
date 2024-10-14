@@ -7,7 +7,7 @@ module Language.Lambda.Targets.Interpreter (
     loop,
 ) where
 
-import Control.Monad (forM, void, (>=>))
+import Control.Monad (forM, (>=>))
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Data.Map as M
 import qualified Data.Text as T

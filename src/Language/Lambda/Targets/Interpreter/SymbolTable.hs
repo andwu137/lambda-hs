@@ -2,16 +2,17 @@ module Language.Lambda.Targets.Interpreter.SymbolTable (
     defaultSymbolTable,
 ) where
 
+import Control.Applicative (Alternative (..))
 import Control.Monad (join, (<=<))
 import Control.Monad.Trans.Class (MonadTrans (..))
-import Data.Functor (($>))
+import Data.Functor (($>), (<&>))
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Language.Lambda.Expr
 import Language.Lambda.Targets.Interpreter.Core
 import Language.Lambda.Targets.Interpreter.Reduction
-import Prelude hiding (div)
-import qualified Prelude
+import Prelude hiding (div, lookup)
+import qualified Prelude hiding (lookup)
 
 defaultSymbolTable :: SymbolTable IO
 defaultSymbolTable =
@@ -68,10 +69,38 @@ myShow =
         Z x -> pure $ show x
         R x -> pure $ show x
         String x -> pure x
-        i@(Ident{}) -> pure $ show i
-        a@(Abs{}) -> pure $ show a
+        Ident i ->
+            lookup i >>= \case
+                Builtin _ -> pure (T.unpack i)
+                Const x -> myShow x
+        a@(Abs{}) -> showAbs a
         a@(App{}) -> myShow =<< eval a
         o@(Op{}) -> myShow =<< eval o
+
+showAbs :: Expr -> InterT IO [Char]
+showAbs = \case
+    Bool b -> pure $ show b
+    Unit -> pure $ show ()
+    Z x -> pure $ show x
+    R x -> pure $ show x
+    String x -> pure x
+    Ident i -> pure $ T.unpack i
+    Abs f b -> showAbs b <&> \x -> concat ["(λ", T.unpack f, ". ", x, ")"]
+    App ml mr -> do
+        (\l r -> concat [tryParen ml l, " ", tryParen mr r])
+            <$> showAbs ml
+            <*> showAbs mr
+    Op o ml mr ->
+        (\l r -> concat [tryParen ml l, " ", T.unpack o, " ", tryParen mr r])
+            <$> showAbs ml
+            <*> showAbs mr
+  where
+    parens x = concat ["(", x, ")"]
+    tryParen = \case
+        Abs{} -> parens
+        Op{} -> parens
+        -- App{} -> parens
+        _ -> id
 
 add :: Expr -> Expr -> InterT IO (Output IO)
 add x y =

@@ -88,11 +88,11 @@ eval =
         z@(Z{}) -> pure z
         r@(R{}) -> pure r
         s@(String{}) -> pure s
+        a@(Abs _ _) -> pure a
         Ident i ->
             lookup i >>= \case
                 Builtin _ -> throwE "Unable to eval builtin"
                 Const c -> eval c
-        Abs _ _ -> throwE "Unable to eval abstraction"
         a@(App{}) -> evalAgain a
         o@(Op{}) -> evalAgain o
   where
