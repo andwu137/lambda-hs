@@ -16,7 +16,10 @@ fib' x =
     if (x==1) 1 ~$
     fib' (x-1) + fib' (x-2);
 
-fib'' f g x = f (x-1) + g (x-2);
+fib'' f g x =
+    if (x==0) 0 ~$
+    if (x==1) 1 ~$
+    f (x-1) + g (x-2);
 
 fib''' = joinArrow fib'';
 
