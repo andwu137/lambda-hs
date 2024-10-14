@@ -113,20 +113,23 @@ strIdent =
             <*> (T.pack <$> P.many followChar)
     infixToPrefix = P.between (symbol "(") (symbol ")") (operL <|> operR)
 
-oper :: (Foldable f) => f (Parser T.Text) -> Parser T.Text
-oper ps =
+oper :: Parser T.Text
+oper = operL <|> operR
+
+operComb :: (Foldable f) => f (Parser T.Text) -> Parser T.Text
+operComb ps =
     lexeme . fmap T.concat . P.some $
         P.choice ps
 
 operL :: Parser T.Text
 operL =
     P.label "operatorL" $
-        oper ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
+        operComb ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
 
 operR :: Parser T.Text
 operR =
     P.label "operatorR" $
-        T.cons <$> P.char '~' <*> oper ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
+        T.cons <$> P.char '~' <*> operComb ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
 
 {- Atoms -}
 atom :: Parser Expr
@@ -204,9 +207,19 @@ app =
         `chainl1` (Op <$> operL)
         `chainr1` (Op <$> operR)
   where
+    oper' = lexeme $ Op <$> oper
+    opL = do
+        t <- term
+        o <- oper'
+        pure $ Abs "x" (o t (Ident "x"))
+    opR = do
+        o <- oper'
+        Abs "x" . o (Ident "x") <$> term
+    op = paren (P.try opL <|> opR)
     term =
         P.choice
-            [ P.try $ paren (P.choice [app, abs, term])
+            [ P.try op
+            , P.try $ paren (P.choice [app, abs, term])
             , atom
             ]
 
