@@ -112,7 +112,7 @@ operL =
 operR :: Parser T.Text
 operR =
     P.label "operatorR" $
-        P.char '~' *> oper ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
+        T.cons <$> P.char '~' <*> oper ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
 
 {- Atoms -}
 atom :: Parser Expr
