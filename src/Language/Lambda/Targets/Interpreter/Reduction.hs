@@ -81,20 +81,19 @@ whnfConstDef x d f =
         Const x' -> f x'
 
 eval :: (Monad m) => Expr -> InterT m Expr
-eval =
-    \case
-        b@(Bool{}) -> pure b
-        u@Unit -> pure u
-        z@(Z{}) -> pure z
-        r@(R{}) -> pure r
-        s@(String{}) -> pure s
-        a@(Abs _ _) -> pure a
-        Ident i ->
-            lookup i >>= \case
-                Builtin _ -> throwE "Unable to eval builtin"
-                Const c -> eval c
-        a@(App{}) -> evalAgain a
-        o@(Op{}) -> evalAgain o
+eval = \case
+    b@(Bool{}) -> pure b
+    u@Unit -> pure u
+    z@(Z{}) -> pure z
+    r@(R{}) -> pure r
+    s@(String{}) -> pure s
+    a@(Abs _ _) -> pure a
+    Ident i ->
+        lookup i >>= \case
+            Builtin _ -> throwE "Unable to eval builtin"
+            Const c -> eval c
+    a@(App{}) -> evalAgain a
+    o@(Op{}) -> evalAgain o
   where
     evalAgain =
         whnf >=> \case
