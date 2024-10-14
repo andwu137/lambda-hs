@@ -56,6 +56,20 @@ chainr1 p o =
   where
     rest x = P.try (o <*> pure x <*> (p >>= rest)) <|> pure x
 
+beta :: T.Text -> Expr -> Expr -> Expr
+beta inpName inp = \case
+    i@(Ident idt)
+        | idt == inpName -> inp
+        | otherwise -> i
+    a@(Abs n b)
+        | n == inpName -> a
+        | otherwise -> Abs n (next b)
+    App x y -> App (next x) (next y)
+    Op o x y -> Op o (next x) (next y)
+    x -> x
+  where
+    next = beta inpName inp
+
 {- Syntax -}
 lineComment :: Parser a
 lineComment = P.empty
@@ -165,7 +179,12 @@ r =
 
 {- Structures -}
 expr :: Parser Expr
-expr = P.choice [app, abs]
+expr = P.choice [letExpr, app, abs]
+
+letExpr :: Parser Expr
+letExpr = do
+    (Assign n v) <- P.try (symbol "let") *> assign <* symbol ";"
+    beta n v <$> expr
 
 args :: Parser (Expr -> Expr)
 args =
@@ -197,7 +216,7 @@ lambdaFile :: Parser [Statement]
 lambdaFile = P.many assign <* P.eof
 
 lambdaLine :: Parser Statement
-lambdaLine = P.try assign <|> (Effect <$> expr)
+lambdaLine = P.try (assign <* P.eof) <|> (Effect <$> expr)
 
 assign :: Parser Statement
 assign =
