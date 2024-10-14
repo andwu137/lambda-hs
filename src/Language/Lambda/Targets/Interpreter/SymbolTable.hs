@@ -88,7 +88,7 @@ showAbs = \case
     Z x -> pure $ show x
     R x -> pure $ show x
     String x -> pure x
-    Ident i -> pure $ T.unpack i
+    Ident i -> pure $ T.unpack i -- TODO: Fix ident is an operator issue
     Abs f b -> showAbs b <&> \x -> concat ["λ", T.unpack f, ". ", x]
     App ml mr -> do
         (\l r -> concat [tryParen ml l, " ", tryParen mr r])
