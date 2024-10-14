@@ -58,7 +58,7 @@ printId :: Expr -> InterT IO (Output IO)
 printId x = myPrint x $> Const x
 
 myPrint :: Expr -> InterT IO (Output IO)
-myPrint = myPutStrLn <=< fmap String . myShow
+myPrint = myPutStrLn . String <=< myShow
 
 myPutStrLn :: Expr -> InterT IO (Output IO)
 myPutStrLn = \case
