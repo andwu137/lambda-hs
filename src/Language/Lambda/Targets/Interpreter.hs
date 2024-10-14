@@ -2,9 +2,10 @@ module Language.Lambda.Targets.Interpreter (
     InterConfig (..),
     runInterpreterSingle,
     runInterpreter,
-    interpreter,
+    runloopInterpreter,
     runFile,
-    loop,
+    fileInterpreter,
+    loopInterpreter,
 ) where
 
 import Control.Monad (forM, (>=>))
@@ -32,15 +33,20 @@ runInterpreterSingle s = do
 
 runInterpreter :: InterConfig -> String -> IO ()
 runInterpreter conf filename = do
-    res <- evalInterT (interpreter conf filename) defaultSymbolTable
+    res <- evalInterT (fileInterpreter conf filename) defaultSymbolTable
     either printError pure res
 
-interpreter :: InterConfig -> String -> InterT IO ()
-interpreter conf filename = do
+runloopInterpreter :: InterConfig -> IO ()
+runloopInterpreter conf = do
+    res <- evalInterT (loopInterpreter conf) defaultSymbolTable
+    either printError pure res
+
+fileInterpreter :: InterConfig -> String -> InterT IO ()
+fileInterpreter conf filename = do
     liftIO $ hSetBuffering stdout NoBuffering
     liftIO $ hSetBuffering stdin LineBuffering
     runFile filename . T.pack =<< liftIO (readFile filename)
-    loop conf
+    loopInterpreter conf
 
 runFile :: String -> T.Text -> InterT IO ()
 runFile filename inp = do
@@ -54,8 +60,8 @@ runFile filename inp = do
                     throwE $ "Unexpected: " <> x'
             modify (<> M.fromList st) -- TODO: Error on duplicates
 
-loop :: InterConfig -> InterT IO ()
-loop (InterConfig{prefix}) =
+loopInterpreter :: InterConfig -> InterT IO ()
+loopInterpreter (InterConfig{prefix}) =
     go
   where
     go = do

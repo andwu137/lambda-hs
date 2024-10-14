@@ -1,7 +1,8 @@
 # lambda-hs
 
 ## How To Run:
-- `stack run -- -i filename`, e.g. `stack run -- -i input/test.lb`
+- Load File with Interpreter: `stack run -- -i filename`, e.g. `stack run -- -i input/test.lb`
+- Run Interpreter: `stack run` or `stack run -- -i`
 
 ## TODO:
 - special commands while in the interpreter (:q, :r)
