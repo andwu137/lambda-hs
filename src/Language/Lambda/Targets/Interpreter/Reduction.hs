@@ -87,7 +87,7 @@ eval = \case
     z@(Z{}) -> pure z
     r@(R{}) -> pure r
     s@(String{}) -> pure s
-    a@(Abs _ _) -> pure a
+    a@(Abs{}) -> pure a
     Ident i ->
         lookup i >>= \case
             Builtin _ -> throwE "Unable to eval builtin"
