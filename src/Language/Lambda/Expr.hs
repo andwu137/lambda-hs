@@ -72,11 +72,11 @@ beta inpName inp = \case
     next = beta inpName inp
 
 {- Syntax -}
-lineComment :: Parser a
-lineComment = P.empty
+lineComment :: Parser ()
+lineComment = L.skipLineComment "--"
 
-blockComment :: Parser a
-blockComment = P.empty
+blockComment :: Parser ()
+blockComment = L.skipBlockComment "{-" "-}"
 
 absOpen :: Parser T.Text
 absOpen = symbol "\\"
