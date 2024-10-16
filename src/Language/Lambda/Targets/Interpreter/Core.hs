@@ -8,6 +8,9 @@ module Language.Lambda.Targets.Interpreter.Core (
     put,
     modify,
     union,
+    unionReplace,
+    insert,
+    insertReplace,
     fromList,
     throwE,
     catchE,
@@ -76,6 +79,15 @@ union st2 = do
                 (InterT . pure <$> st1)
                 (InterT . pure <$> st2)
     put st'
+
+insert :: (Monad m) => T.Text -> Output m -> InterT m ()
+insert k x = union =<< fromList [(k, x)]
+
+unionReplace :: (Monad m) => SymbolTable m -> InterT m ()
+unionReplace = modify . M.union
+
+insertReplace :: (Monad m) => T.Text -> Output m -> InterT m ()
+insertReplace k x = modify $ M.insert k x
 
 throwE :: (Monad m) => T.Text -> InterT m a
 throwE = InterT . lift . E.throwE

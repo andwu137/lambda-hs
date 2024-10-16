@@ -10,7 +10,6 @@ module Language.Lambda.Targets.Interpreter (
 
 import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO (..))
-import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Language.Lambda.Expr as E
 import qualified Language.Lambda.Targets.Interpreter.Core as I
@@ -79,7 +78,7 @@ handleLine s =
 
 handleStatement :: E.Statement -> I.InterT IO ()
 handleStatement = \case
-    E.Assign x y -> I.modify (M.insert x (I.Const y))
+    E.Assign x y -> I.insertReplace x (I.Const y)
     E.Effect x ->
         I.whnf x >>= \case
             I.Builtin _ -> I.throwE "Unable to print built-in"
