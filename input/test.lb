@@ -5,8 +5,8 @@ y = \f -> (\x -> f (x x)) (\x -> f (x x));
 joinArrow = \f x -> f x x;
 
 range start end step bin def =
-    let next = range (step start) end step bin def;;
-    let binNext = bin start next;;
+    let next = range (step start) end step bin def;
+        binNext = bin start next;;
     if (end start) def binNext;
 
 fac = \x ->

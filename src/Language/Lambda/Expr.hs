@@ -6,6 +6,7 @@ module Language.Lambda.Expr (
     lambdaLine,
 ) where
 
+import Data.Foldable (Foldable (..))
 import Data.Functor (void, ($>))
 import qualified Data.Text as T
 import Data.Void (Void)
@@ -23,7 +24,8 @@ data Statement
     deriving (Show, Eq)
 
 data Expr
-    = Ident T.Text
+    = Unit
+    | Ident T.Text
     | Z Integer
     | R Double
     | String String
@@ -31,7 +33,6 @@ data Expr
     | Abs T.Text Expr
     | App Expr Expr
     | Op T.Text Expr Expr
-    | Unit
     deriving (Show, Eq, Ord)
 
 {- Helpers -}
@@ -168,7 +169,11 @@ string =
     oneChar = P.try (P.string "\\\"" $> '"') <|> P.anySingleBut '"'
 
 ident :: Parser Expr
-ident = P.label "Identifier" $ Ident <$> strIdent
+ident = P.label "Identifier" $ do
+    i <- strIdent
+    if i `notElem` reserved
+        then pure $ Ident i
+        else P.label "identifier" P.empty
 
 z :: Parser Expr
 z =
@@ -180,14 +185,23 @@ r =
     P.label "R" $
         R <$> lexeme (L.signed P.empty L.float)
 
+reserved :: [T.Text]
+reserved = ["let"]
+
 {- Structures -}
 expr :: Parser Expr
 expr = P.choice [letExpr, app, abs]
 
 letExpr :: Parser Expr
 letExpr = do
-    (Assign n v) <- P.try (symbol "let") *> assign <* symbol ";"
-    beta n v <$> expr
+    P.try (symbol "let") *> lambdaFile' <* symbol ";" >>= \case
+        x : xs -> do
+            let func = foldl' (\acc a -> applyAssign a . acc) (applyAssign x) xs
+                applyAssign = \case
+                    Assign n v -> beta n v
+                    Effect{} -> id
+            func <$> expr
+        _ -> P.label "assignment" P.empty
 
 args :: Parser (Expr -> Expr)
 args =
@@ -226,7 +240,10 @@ app =
 {- Statements -}
 -- TODO: Error messages
 lambdaFile :: Parser [Statement]
-lambdaFile = P.many assign <* P.eof
+lambdaFile = lambdaFile' <* P.eof
+
+lambdaFile' :: Parser [Statement]
+lambdaFile' = P.many assign
 
 lambdaLine :: Parser Statement
 lambdaLine = P.try (assign <* P.eof) <|> (Effect <$> expr)
