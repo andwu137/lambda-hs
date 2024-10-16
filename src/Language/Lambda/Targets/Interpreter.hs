@@ -8,27 +8,27 @@ module Language.Lambda.Targets.Interpreter (
     loopInterpreter,
 ) where
 
-import Control.Monad (forM, (>=>))
+import Control.Monad (forM)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Data.Map as M
 import qualified Data.Text as T
-import Language.Lambda.Expr
-import Language.Lambda.Targets.Interpreter.Core
-import Language.Lambda.Targets.Interpreter.Reduction
-import Language.Lambda.Targets.Interpreter.SymbolTable
+import qualified Language.Lambda.Expr as E
+import qualified Language.Lambda.Targets.Interpreter.Core as I
+import qualified Language.Lambda.Targets.Interpreter.Reduction as I
+import qualified Language.Lambda.Targets.Interpreter.SymbolTable as I
 import System.IO
 import qualified Text.Megaparsec as P
 import Prelude hiding (div, lookup)
 
 printError :: T.Text -> IO ()
-printError = putStrLn . T.unpack
+printError = putStrLn . unlines . fmap (">>> " <>) . lines . T.unpack
 
 data InterConfig = InterConfig {prefix :: String}
     deriving (Show, Eq)
 
-runInterpreterDefault :: InterT IO () -> IO ()
+runInterpreterDefault :: I.InterT IO () -> IO ()
 runInterpreterDefault i = do
-    res <- evalInterT i defaultSymbolTable
+    res <- I.evalInterT i I.defaultSymbolTable
     either printError pure res
 
 runInterpreterSingle :: T.Text -> IO ()
@@ -41,26 +41,26 @@ runInterpreter conf filename =
 runloopInterpreter :: InterConfig -> IO ()
 runloopInterpreter conf = runInterpreterDefault $ loopInterpreter conf
 
-fileInterpreter :: InterConfig -> String -> InterT IO ()
+fileInterpreter :: InterConfig -> String -> I.InterT IO ()
 fileInterpreter conf filename = do
     liftIO $ hSetBuffering stdout NoBuffering
     liftIO $ hSetBuffering stdin LineBuffering
     runFile filename . T.pack =<< liftIO (readFile filename)
     loopInterpreter conf
 
-runFile :: String -> T.Text -> InterT IO ()
+runFile :: String -> T.Text -> I.InterT IO ()
 runFile filename inp = do
-    case P.parse lambdaFile filename inp of
-        Left e -> throwE $ T.pack $ P.errorBundlePretty e
+    case P.parse E.lambdaFile filename inp of
+        Left e -> I.throwE $ T.pack $ P.errorBundlePretty e
         Right r -> do
             st <- forM r $ \case
-                Assign x y -> pure (x, Const y)
-                Effect x -> do
+                E.Assign x y -> pure (x, I.Const y)
+                E.Effect x -> do
                     x' <- display x
-                    throwE $ "Unexpected: " <> x'
-            union =<< fromList st
+                    I.throwE $ "Unexpected: " <> x'
+            I.union =<< I.fromList st
 
-loopInterpreter :: InterConfig -> InterT IO ()
+loopInterpreter :: InterConfig -> I.InterT IO ()
 loopInterpreter (InterConfig{prefix}) =
     go
   where
@@ -68,22 +68,22 @@ loopInterpreter (InterConfig{prefix}) =
         -- liftIO . print . debugSymbolTable =<< get
         liftIO $ putStr prefix
         liftIO (T.pack <$> getLine) >>= \line ->
-            catchE (handleLine line) $ liftIO . printError
+            I.catchE (handleLine line) $ liftIO . printError
         go
 
-handleLine :: T.Text -> InterT IO ()
+handleLine :: T.Text -> I.InterT IO ()
 handleLine s =
-    case P.parse (lambdaLine <* P.eof) "lambda-interpreter" s of
-        Left e -> throwE . T.pack $ P.errorBundlePretty e
+    case P.parse (E.lambdaLine <* P.eof) "lambda-interpreter" s of
+        Left e -> I.throwE . T.pack $ P.errorBundlePretty e
         Right x -> handleStatement x
 
-handleStatement :: Statement -> InterT IO ()
+handleStatement :: E.Statement -> I.InterT IO ()
 handleStatement = \case
-    Assign x y -> modify (M.insert x (Const y))
-    Effect x ->
-        whnf x >>= \case
-            Builtin _ -> throwE "Unable to print built-in"
-            Const e -> liftIO . putStrLn . T.unpack =<< display e
+    E.Assign x y -> I.modify (M.insert x (I.Const y))
+    E.Effect x ->
+        I.whnf x >>= \case
+            I.Builtin _ -> I.throwE "Unable to print built-in"
+            I.Const e -> liftIO . putStrLn . T.unpack =<< display e
 
-display :: Expr -> InterT IO T.Text
-display x = T.pack <$> myShow x
+display :: E.Expr -> I.InterT IO T.Text
+display x = T.pack <$> I.myShow x

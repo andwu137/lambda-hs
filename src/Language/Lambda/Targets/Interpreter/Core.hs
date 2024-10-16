@@ -23,7 +23,7 @@ import qualified Control.Monad.Trans.State as S
 import Data.Functor (($>))
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import Language.Lambda.Expr
+import qualified Language.Lambda.Expr as E
 import Prelude hiding (lookup)
 
 {- SymbolTable -}
@@ -40,12 +40,12 @@ errorDuplicateSymbolBound :: (Monad m) => T.Text -> p1 -> p2 -> InterT m a
 errorDuplicateSymbolBound k _ _ = throwE $ "Unexpected duplicate symbol bound: " <> k
 
 data Output m
-    = Builtin (Expr -> InterT m (Output m))
-    | Const Expr
+    = Builtin (E.Expr -> InterT m (Output m))
+    | Const E.Expr
 
-debugSymbolTable :: M.Map T.Text (Output m) -> M.Map T.Text Expr
+debugSymbolTable :: M.Map T.Text (Output m) -> M.Map T.Text E.Expr
 debugSymbolTable = fmap $ \case
-    Builtin _ -> Ident "Built-In"
+    Builtin _ -> E.Ident "Built-In"
     Const c -> c
 
 {- Inter -}
