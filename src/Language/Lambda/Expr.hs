@@ -190,7 +190,7 @@ reserved = ["let"]
 
 {- Structures -}
 expr :: Parser Expr
-expr = P.choice [letExpr, app, abs]
+expr = P.choice [abs, letExpr, app]
 
 letExpr :: Parser Expr
 letExpr = do
@@ -235,6 +235,7 @@ app =
             [ P.try op
             , P.try $ paren (P.choice [app, abs, term])
             , atom
+            , abs
             ]
 
 {- Statements -}
