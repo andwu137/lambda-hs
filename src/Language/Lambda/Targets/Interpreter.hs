@@ -26,20 +26,20 @@ printError = putStrLn . T.unpack
 data InterConfig = InterConfig {prefix :: String}
     deriving (Show, Eq)
 
-runInterpreterSingle :: T.Text -> IO ()
-runInterpreterSingle s = do
-    res <- evalInterT (handleLine s) defaultSymbolTable
+runInterpreterDefault :: InterT IO () -> IO ()
+runInterpreterDefault i = do
+    res <- evalInterT i defaultSymbolTable
     either printError pure res
+
+runInterpreterSingle :: T.Text -> IO ()
+runInterpreterSingle s = runInterpreterDefault $ handleLine s
 
 runInterpreter :: InterConfig -> String -> IO ()
-runInterpreter conf filename = do
-    res <- evalInterT (fileInterpreter conf filename) defaultSymbolTable
-    either printError pure res
+runInterpreter conf filename =
+    runInterpreterDefault $ fileInterpreter conf filename
 
 runloopInterpreter :: InterConfig -> IO ()
-runloopInterpreter conf = do
-    res <- evalInterT (loopInterpreter conf) defaultSymbolTable
-    either printError pure res
+runloopInterpreter conf = runInterpreterDefault $ loopInterpreter conf
 
 fileInterpreter :: InterConfig -> String -> InterT IO ()
 fileInterpreter conf filename = do
