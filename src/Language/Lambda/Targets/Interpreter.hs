@@ -58,7 +58,7 @@ runFile filename inp = do
                 Effect x -> do
                     x' <- display x
                     throwE $ "Unexpected: " <> x'
-            modify (<> M.fromList st) -- TODO: Error on duplicates
+            union =<< fromList st
 
 loopInterpreter :: InterConfig -> InterT IO ()
 loopInterpreter (InterConfig{prefix}) =

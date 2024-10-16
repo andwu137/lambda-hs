@@ -7,6 +7,8 @@ module Language.Lambda.Targets.Interpreter.Core (
     get,
     put,
     modify,
+    union,
+    fromList,
     throwE,
     catchE,
     lookup,
@@ -26,6 +28,16 @@ import Prelude hiding (lookup)
 
 {- SymbolTable -}
 type SymbolTable m = M.Map T.Text (Output m)
+
+fromList :: (Monad m) => [(T.Text, Output m)] -> InterT m (M.Map T.Text (Output m))
+fromList st =
+    sequence $
+        M.fromListWithKey
+            errorDuplicateSymbolBound
+            (fmap (InterT . pure) <$> st)
+
+errorDuplicateSymbolBound :: (Monad m) => T.Text -> p1 -> p2 -> InterT m a
+errorDuplicateSymbolBound k _ _ = throwE $ "Unexpected duplicate symbol bound: " <> k
 
 data Output m
     = Builtin (Expr -> InterT m (Output m))
@@ -53,6 +65,17 @@ put = InterT . S.put
 
 modify :: (Monad m) => (SymbolTable m -> SymbolTable m) -> InterT m ()
 modify = InterT . S.modify
+
+union :: (Monad m) => SymbolTable m -> InterT m ()
+union st2 = do
+    st1 <- get
+    st' <-
+        sequence $
+            M.unionWithKey
+                errorDuplicateSymbolBound
+                (InterT . pure <$> st1)
+                (InterT . pure <$> st2)
+    put st'
 
 throwE :: (Monad m) => T.Text -> InterT m a
 throwE = InterT . lift . E.throwE
