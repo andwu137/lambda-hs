@@ -4,6 +4,9 @@ i = \x -> x;
 y = \f -> (\x -> f (x x)) (\x -> f (x x));
 joinArrow = \f x -> f x x;
 
+(~$) f x = f x;
+(.) f g x = f (g x);
+
 range start end step bin def =
     let next = range (step start) end step bin def;
         binNext = bin start next;;
@@ -32,6 +35,3 @@ fib'' f g x =
 fib''' = joinArrow fib'';
 
 fib'''' = y fib''';
-
-(~$) f x = f x;
-(.) f g x = f (g x);
