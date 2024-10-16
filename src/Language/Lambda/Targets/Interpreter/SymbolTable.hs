@@ -1,5 +1,15 @@
 module Language.Lambda.Targets.Interpreter.SymbolTable (
     defaultSymbolTable,
+    if',
+    printId,
+    myPrint,
+    myPutStrLn,
+    myShow,
+    showAbs,
+    add,
+    mul,
+    div,
+    sub,
 ) where
 
 import Control.Applicative (Alternative (..))

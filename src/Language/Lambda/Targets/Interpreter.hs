@@ -86,12 +86,4 @@ handleStatement = \case
             Const e -> liftIO . putStrLn . T.unpack =<< display e
 
 display :: Expr -> InterT IO T.Text
-display =
-    eval >=> \case
-        Bool b -> pure $ T.pack $ show b
-        Unit -> pure $ T.pack $ show ()
-        Z x -> pure $ T.pack $ show x
-        R x -> pure $ T.pack $ show x
-        String x -> pure $ T.pack x
-        Abs{} -> throwE "Unable to print abstraction"
-        e -> eval e >>= display
+display x = T.pack <$> myShow x
