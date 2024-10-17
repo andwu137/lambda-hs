@@ -123,9 +123,13 @@ oper' :: Parser T.Text
 oper' = operL <|> operR
 
 operComb :: (Foldable f) => f (Parser T.Text) -> Parser T.Text
-operComb ps =
-    lexeme . fmap T.concat . P.some $
-        P.choice ps
+operComb ps = do
+    o <-
+        lexeme . fmap T.concat . P.some $
+            P.choice ps
+    if o `notElem` reservedOper
+        then pure o
+        else P.label "operator" P.empty
 
 operL :: Parser T.Text
 operL =
@@ -180,7 +184,7 @@ ident :: Parser Expr
 ident =
     P.label "Identifier" $ do
         i <- strIdent
-        if i `notElem` reserved
+        if i `notElem` reservedName
             then pure $ Ident i
             else P.label "identifier" P.empty
 
@@ -194,8 +198,11 @@ r =
     P.label "R" $
         R <$> lexeme (L.signed P.empty L.float)
 
-reserved :: [T.Text]
-reserved = ["let"]
+reservedName :: [T.Text]
+reservedName = ["let"]
+
+reservedOper :: [T.Text]
+reservedOper = ["="]
 
 tryStrict :: Parser Expr -> Parser Expr
 tryStrict p = (Strict <$ P.char '~' <*> p) <|> p
