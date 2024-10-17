@@ -266,13 +266,16 @@ lambdaFile' :: Parser [Statement]
 lambdaFile' = P.many assign
 
 lambdaLine :: Parser Statement
-lambdaLine = P.try (assign <* P.eof) <|> (Effect <$> expr)
+lambdaLine = P.try (assign' <* P.optional (symbol ";") <* P.eof) <|> (Effect <$> expr)
 
 assign :: Parser Statement
-assign =
+assign = assign' <* symbol ";"
+
+assign' :: Parser Statement
+assign' =
     Assign
         <$> strIdent
         <*> do
             a <- args
             void $ symbol "="
-            a <$> expr <* symbol ";"
+            a <$> expr
