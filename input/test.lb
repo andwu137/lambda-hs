@@ -10,7 +10,6 @@ flip f x y = f y x;
 (.) f g x = f (g x);
 
 seq x y = k y ~(x);
--- seq' ~x y = y;
 
 {- module List -}
 nil t d = d;
