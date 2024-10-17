@@ -87,13 +87,13 @@ absClose :: Parser T.Text
 absClose = symbol "->"
 
 optionalParen :: Parser a -> Parser a
-optionalParen p = P.try (paren p) <|> p
+optionalParen p = paren p <|> p
 
 paren :: Parser a -> Parser a
 paren = lexeme . P.between (symbol "(") (symbol ")")
 
 optionalParenRec :: Parser a -> Parser a
-optionalParenRec p = P.try (parenRec p) <|> p
+optionalParenRec p = parenRec p <|> p
 
 parenRec :: Parser a -> Parser a
 parenRec p =
@@ -101,7 +101,7 @@ parenRec p =
   where
     go = do
         void $ symbol "("
-        x <- P.try go <|> p
+        x <- go <|> p
         void $ symbol ")"
         pure x
 
@@ -137,16 +137,15 @@ operR =
 {- Atoms -}
 atom :: Parser Expr
 atom =
-    optionalParenRec $
-        P.choice
-            [ P.try bool
-            , undef
-            , unit
-            , ident
-            , string
-            , P.try r
-            , z
-            ]
+    P.choice
+        [ bool
+        , undef
+        , unit
+        , ident
+        , string
+        , P.try r
+        , z
+        ]
 
 bool :: Parser Expr
 bool =
@@ -154,7 +153,7 @@ bool =
         lexeme $
             Bool
                 <$> P.choice
-                    [ P.try (P.string "True" $> True)
+                    [ P.string "True" $> True
                     , P.string "False" $> False
                     ]
 
@@ -172,7 +171,7 @@ string =
                 String <$> innerString
   where
     innerString = P.many oneChar
-    oneChar = P.try (P.string "\\\"" $> '"') <|> P.anySingleBut '"'
+    oneChar = (P.string "\\\"" $> '"') <|> P.anySingleBut '"'
 
 ident :: Parser Expr
 ident =
@@ -200,11 +199,11 @@ tryStrict p = (Strict <$ P.char '~' <*> p) <|> p
 
 {- Structures -}
 expr :: Parser Expr
-expr = P.choice [abs, letExpr, app]
+expr = P.choice [abs, P.try letExpr, app]
 
 letExpr :: Parser Expr
 letExpr = do
-    P.try (symbol "let") *> lambdaFile' <* symbol ";" >>= \case
+    symbol "let" *> lambdaFile' <* symbol ";" >>= \case
         x : xs -> do
             let func = foldl' (\acc a -> applyAssign a . acc) (applyAssign x) xs
                 applyAssign = \case
@@ -239,11 +238,11 @@ app =
     opR = do
         o <- oper'
         Abs "x" . o (Ident "x") <$> term
-    op = paren (P.try opL <|> opR)
+    op = P.try opL <|> opR
     term = do
         P.choice
-            [ P.try op
-            , P.try $ tryStrict $ paren (P.choice [app, abs, term])
+            [ P.try $ paren (op <|> abs)
+            , P.try $ tryStrict $ paren (app <|> term)
             , atom
             , abs
             ]
@@ -262,7 +261,7 @@ lambdaLine = P.try (assign <* P.eof) <|> (Effect <$> expr)
 assign :: Parser Statement
 assign =
     Assign
-        <$> P.try strIdent
+        <$> strIdent
         <*> do
             a <- args
             void $ symbol "="
