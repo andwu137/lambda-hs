@@ -22,7 +22,11 @@ import Prelude hiding (div, lookup)
 printError :: T.Text -> IO ()
 printError = putStrLn . unlines . fmap (">>> " <>) . lines . T.unpack
 
-data InterConfig = InterConfig {prefix :: String}
+data InterConfig
+    = InterConfig
+    { inputPrefix :: String
+    , returnPrefix :: String
+    }
     deriving (Show, Eq)
 
 runInterpreterDefault :: I.InterT IO () -> IO ()
@@ -30,8 +34,8 @@ runInterpreterDefault i = do
     res <- I.evalInterT i I.defaultSymbolTable
     either printError pure res
 
-runInterpreterSingle :: T.Text -> IO ()
-runInterpreterSingle s = runInterpreterDefault $ handleLine s
+runInterpreterSingle :: InterConfig -> T.Text -> IO ()
+runInterpreterSingle conf s = runInterpreterDefault $ handleLine conf s
 
 runInterpreter :: InterConfig -> String -> IO ()
 runInterpreter conf filename =
@@ -44,44 +48,44 @@ fileInterpreter :: InterConfig -> String -> I.InterT IO ()
 fileInterpreter conf filename = do
     liftIO $ hSetBuffering stdout NoBuffering
     liftIO $ hSetBuffering stdin LineBuffering
-    runFile filename . T.pack =<< liftIO (readFile filename)
+    runFile conf filename . T.pack =<< liftIO (readFile filename)
     loopInterpreter conf
 
-runFile :: String -> T.Text -> I.InterT IO ()
-runFile filename inp = do
+runFile :: InterConfig -> String -> T.Text -> I.InterT IO ()
+runFile conf filename inp = do
     case P.parse E.lambdaFile filename inp of
         Left e -> I.throwE $ T.pack $ P.errorBundlePretty e
         Right r -> do
             st <- forM r $ \case
                 E.Assign x y -> pure (x, I.Const y)
                 E.Effect x -> do
-                    x' <- display x
+                    x' <- display conf x
                     I.throwE $ "Unexpected: " <> x'
             I.union =<< I.fromList st
 
 loopInterpreter :: InterConfig -> I.InterT IO ()
-loopInterpreter (InterConfig{prefix}) =
+loopInterpreter conf@(InterConfig{inputPrefix}) =
     go
   where
     go = do
-        liftIO $ putStr prefix
+        liftIO $ putStr inputPrefix
         liftIO (T.pack <$> getLine) >>= \line ->
-            I.catchE (handleLine line) $ liftIO . printError
+            I.catchE (handleLine conf line) $ liftIO . printError
         go
 
-handleLine :: T.Text -> I.InterT IO ()
-handleLine s =
+handleLine :: InterConfig -> T.Text -> I.InterT IO ()
+handleLine conf s =
     case P.parse (E.lambdaLine <* P.eof) "lambda-interpreter" s of
         Left e -> I.throwE . T.pack $ P.errorBundlePretty e
-        Right x -> handleStatement x
+        Right x -> handleStatement conf x
 
-handleStatement :: E.Statement -> I.InterT IO ()
-handleStatement = \case
+handleStatement :: InterConfig -> E.Statement -> I.InterT IO ()
+handleStatement c = \case
     E.Assign x y -> I.insertReplace x (I.Const y)
     E.Effect x ->
         I.whnf x >>= \case
             I.Builtin _ -> I.throwE "Unable to print built-in"
-            I.Const e -> liftIO . putStrLn . T.unpack =<< display e
+            I.Const e -> liftIO . putStrLn . T.unpack =<< display c e
 
-display :: E.Expr -> I.InterT IO T.Text
-display x = T.pack <$> I.myShow x
+display :: InterConfig -> E.Expr -> I.InterT IO T.Text
+display (InterConfig{returnPrefix}) x = T.pack . (returnPrefix <>) <$> I.myShow x

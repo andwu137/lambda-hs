@@ -7,7 +7,8 @@ import System.IO
 conf :: InterConfig
 conf =
     InterConfig
-        { prefix = "λ> "
+        { inputPrefix = "λ> "
+        , returnPrefix = "β> "
         }
 
 main :: IO ()
