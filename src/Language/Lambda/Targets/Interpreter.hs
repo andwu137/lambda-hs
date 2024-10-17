@@ -64,7 +64,6 @@ loopInterpreter (InterConfig{prefix}) =
     go
   where
     go = do
-        -- liftIO . print . debugSymbolTable =<< get
         liftIO $ putStr prefix
         liftIO (T.pack <$> getLine) >>= \line ->
             I.catchE (handleLine line) $ liftIO . printError
