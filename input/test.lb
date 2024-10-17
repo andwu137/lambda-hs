@@ -11,6 +11,8 @@ flip f x y = f y x;
 
 seq x y = k y ~(x);
 
+negate = (0-);
+
 {- module List -}
 nil t d = d;
 
