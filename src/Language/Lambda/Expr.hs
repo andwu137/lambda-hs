@@ -116,8 +116,11 @@ strIdent =
             <*> (T.pack <$> P.many followChar)
     infixToPrefix = P.between (symbol "(") (symbol ")") (operL <|> operR)
 
-oper :: Parser T.Text
-oper = operL <|> operR
+oper :: Parser (Expr -> Expr -> Expr)
+oper = lexeme $ Op <$> oper'
+
+oper' :: Parser T.Text
+oper' = operL <|> operR
 
 operComb :: (Foldable f) => f (Parser T.Text) -> Parser T.Text
 operComb ps =
@@ -199,7 +202,7 @@ tryStrict p = (Strict <$ P.char '~' <*> p) <|> p
 
 {- Structures -}
 expr :: Parser Expr
-expr = P.choice [abs, P.try letExpr, app]
+expr = P.try letExpr <|> app
 
 letExpr :: Parser Expr
 letExpr = do
@@ -212,17 +215,6 @@ letExpr = do
             func <$> expr
         [] -> P.label "assignment" P.empty
 
-args :: Parser (Expr -> Expr)
-args =
-    P.label "arguments" $
-        foldl (\f x -> f . Abs x) id
-            <$> P.many (lexeme strIdent)
-
-abs :: Parser Expr
-abs =
-    (absOpen *> args <* absClose)
-        <*> expr
-
 app :: Parser Expr
 app =
     term
@@ -230,22 +222,33 @@ app =
         `chainl1` (Op <$> operL)
         `chainr1` (Op <$> operR)
   where
-    oper' = lexeme $ Op <$> oper
-    opL = do
-        t <- term
-        o <- oper'
-        pure $ Abs "x" (o t (Ident "x"))
-    opR = do
-        o <- oper'
-        Abs "x" . o (Ident "x") <$> term
-    op = P.try opL <|> opR
     term = do
         P.choice
-            [ P.try $ paren (op <|> abs)
+            [ P.try $ paren (sidedOper <|> abs)
             , P.try $ tryStrict $ paren (app <|> term)
             , atom
             , abs
             ]
+
+    sidedOper = P.try sidedOperL <|> sidedOperR
+    sidedOperL = do
+        t <- term
+        o <- oper
+        pure $ Abs "x" (o t (Ident "x"))
+    sidedOperR = do
+        o <- oper
+        Abs "x" . o (Ident "x") <$> term
+
+abs :: Parser Expr
+abs =
+    (absOpen *> args <* absClose)
+        <*> expr
+
+args :: Parser (Expr -> Expr)
+args =
+    P.label "arguments" $
+        foldl (\f x -> f . Abs x) id
+            <$> P.many (lexeme strIdent)
 
 {- Statements -}
 -- TODO: Error messages
