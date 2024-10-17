@@ -77,6 +77,8 @@ myPutStrLn = \case
 myShow :: E.Expr -> I.InterT IO String
 myShow =
     \case
+        E.Undefined -> I.eval E.Undefined >>= myShow
+        E.Strict e -> myShow e
         E.Bool b -> pure $ show b
         E.Unit -> pure $ show ()
         E.Z x -> pure $ show x
@@ -92,6 +94,8 @@ myShow =
 
 showAbs :: E.Expr -> I.InterT IO [Char]
 showAbs = \case
+    E.Undefined -> I.eval E.Undefined >>= showAbs
+    E.Strict e -> showAbs e
     E.Bool b -> pure $ show b
     E.Unit -> pure $ show ()
     E.Z x -> pure $ show x
@@ -100,20 +104,30 @@ showAbs = \case
     E.Ident i -> pure $ T.unpack i -- TODO: Fix ident is an operator issue
     E.Abs f b -> showAbs b <&> \x -> concat ["λ", T.unpack f, ". ", x]
     E.App ml mr -> do
-        (\l r -> concat [tryParen ml l, " ", tryParen mr r])
+        (\l r -> concat [showParens ml l, " ", showParens mr r])
             <$> showAbs ml
             <*> showAbs mr
     E.Op o ml mr ->
-        (\l r -> concat [tryParen ml l, " ", T.unpack o, " ", tryParen mr r])
+        (\l r -> concat [showParens ml l, " ", T.unpack o, " ", showParens mr r])
             <$> showAbs ml
             <*> showAbs mr
-  where
-    parens x = concat ["(", x, ")"]
-    tryParen = \case
-        E.Op{} -> parens
-        E.App{} -> parens
-        E.Abs{} -> parens
-        _ -> id
+
+parens :: String -> String
+parens x = concat ["(", x, ")"]
+
+showParens :: E.Expr -> String -> String
+showParens = \case
+    E.Strict e -> showParens e
+    E.Op{} -> parens
+    E.App{} -> parens
+    E.Abs{} -> parens
+    E.Undefined -> id
+    E.Bool{} -> id
+    E.Unit -> id
+    E.Z{} -> id
+    E.R{} -> id
+    E.String{} -> id
+    E.Ident{} -> id
 
 add :: E.Expr -> E.Expr -> I.InterT IO (I.Output IO)
 add x y =

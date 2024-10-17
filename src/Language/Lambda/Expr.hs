@@ -25,6 +25,7 @@ data Statement
 
 data Expr
     = Unit
+    | Undefined
     | Ident T.Text
     | Z Integer
     | R Double
@@ -33,6 +34,7 @@ data Expr
     | Abs T.Text Expr
     | App Expr Expr
     | Op T.Text Expr Expr
+    | Strict Expr
     deriving (Show, Eq, Ord)
 
 {- Helpers -}
@@ -110,7 +112,7 @@ strIdent =
     followChar = P.alphaNumChar <|> P.choice (P.char <$> ['\'', '_'])
     standard =
         T.cons
-            <$> P.letterChar
+            <$> P.lowerChar
             <*> (T.pack <$> P.many followChar)
     infixToPrefix = P.between (symbol "(") (symbol ")") (operL <|> operR)
 
@@ -138,9 +140,10 @@ atom =
     optionalParenRec $
         P.choice
             [ P.try bool
+            , undef
+            , unit
             , ident
             , string
-            , unit
             , P.try r
             , z
             ]
@@ -158,6 +161,9 @@ bool =
 unit :: Parser Expr
 unit = P.label "Unit" $ symbol "Unit" $> Unit
 
+undef :: Parser Expr
+undef = P.label "Undefined" $ symbol "Undefined" $> Undefined
+
 string :: Parser Expr
 string =
     P.label "String" $
@@ -169,11 +175,12 @@ string =
     oneChar = P.try (P.string "\\\"" $> '"') <|> P.anySingleBut '"'
 
 ident :: Parser Expr
-ident = P.label "Identifier" $ do
-    i <- strIdent
-    if i `notElem` reserved
-        then pure $ Ident i
-        else P.label "identifier" P.empty
+ident =
+    P.label "Identifier" $ do
+        i <- strIdent
+        if i `notElem` reserved
+            then pure $ Ident i
+            else P.label "identifier" P.empty
 
 z :: Parser Expr
 z =
@@ -188,6 +195,9 @@ r =
 reserved :: [T.Text]
 reserved = ["let"]
 
+tryStrict :: Parser Expr -> Parser Expr
+tryStrict p = (Strict <$ P.char '~' <*> p) <|> p
+
 {- Structures -}
 expr :: Parser Expr
 expr = P.choice [abs, letExpr, app]
@@ -201,7 +211,7 @@ letExpr = do
                     Assign n v -> beta n v
                     Effect{} -> id
             func <$> expr
-        _ -> P.label "assignment" P.empty
+        [] -> P.label "assignment" P.empty
 
 args :: Parser (Expr -> Expr)
 args =
@@ -230,10 +240,10 @@ app =
         o <- oper'
         Abs "x" . o (Ident "x") <$> term
     op = paren (P.try opL <|> opR)
-    term =
+    term = do
         P.choice
             [ P.try op
-            , P.try $ paren (P.choice [app, abs, term])
+            , P.try $ tryStrict $ paren (P.choice [app, abs, term])
             , atom
             , abs
             ]

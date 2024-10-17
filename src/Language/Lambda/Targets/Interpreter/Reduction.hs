@@ -22,6 +22,8 @@ lookupApply sym x =
 
 beta :: E.Expr -> T.Text -> E.Expr -> E.Expr
 beta b sym inp = case b of
+    E.Undefined -> E.Undefined
+    E.Strict e -> E.Strict $ beta e sym inp
     p@(E.Bool _) -> p
     i@(E.Ident sym')
         | sym == sym' -> inp
@@ -42,6 +44,7 @@ tryBeta = \cases
     (E.Abs x b) inp -> pure . I.Const $ beta b x inp
     x@(E.App{}) y -> whnfFirst x y
     x@(E.Op{}) y -> whnfFirst x y
+    E.Undefined _ -> I.throwE "Left hand side of application is Undefined"
     _ _ -> I.throwE "Left hand side of application is not an abstraction nor identifier"
   where
     whnfFirst x y =
@@ -52,10 +55,14 @@ tryBeta = \cases
 whnf :: (Monad m) => E.Expr -> I.InterT m (I.Output m)
 whnf =
     \case
+        E.Strict e -> I.Const <$> eval e
+        E.App f (E.Strict x) -> eval x >>= whnf . E.App f
         E.App f x ->
             whnf f >>= \case
                 I.Builtin f' -> f' x
                 I.Const e -> tryBeta e x >>= tryWhnf
+        E.Op o (E.Strict x) y -> eval x >>= \x' -> whnf (E.Op o x' y)
+        E.Op o x (E.Strict y) -> eval y >>= \y' -> whnf (E.Op o x y')
         E.Op o x y ->
             tryBeta (E.Ident o) x >>= \case
                 I.Builtin f' -> f' y
@@ -81,7 +88,9 @@ whnfConstDef x d f =
         I.Const x' -> f x'
 
 eval :: (Monad m) => E.Expr -> I.InterT m E.Expr
-eval = \case
+eval x = case x of
+    E.Undefined -> I.throwE "Unable to evaluate undefined"
+    E.Strict e -> eval e
     b@(E.Bool{}) -> pure b
     u@E.Unit -> pure u
     z@(E.Z{}) -> pure z
@@ -90,12 +99,13 @@ eval = \case
     a@(E.Abs{}) -> pure a
     E.Ident i ->
         I.lookup i >>= \case
-            I.Builtin _ -> I.throwE "Unable to eval builtin"
+            I.Builtin _ -> I.throwE "Unable to evaluate builtin"
             I.Const c -> eval c
-    a@(E.App{}) -> evalAgain a
-    o@(E.Op{}) -> evalAgain o
+    a@(E.App{}) -> whnfEvalAgain a
+    o@(E.Op{}) -> whnfEvalAgain o
   where
+    whnfEvalAgain = whnf >=> evalAgain
     evalAgain =
-        whnf >=> \case
+        \case
             I.Builtin _ -> I.throwE "Unable to eval builtin"
             I.Const c -> eval c
