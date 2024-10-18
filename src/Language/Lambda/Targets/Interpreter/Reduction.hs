@@ -53,21 +53,20 @@ tryBeta = \cases
             I.Const e -> tryBeta e y
 
 whnf :: (Monad m) => E.Expr -> I.InterT m (I.Output m)
-whnf =
-    \case
-        E.Strict e -> I.Const <$> eval e
-        E.App f (E.Strict x) -> eval x >>= whnf . E.App f
-        E.App f x ->
-            whnf f >>= \case
-                I.Builtin f' -> f' x
-                I.Const e -> tryBeta e x >>= tryWhnf
-        E.Op o (E.Strict x) y -> eval x >>= \x' -> whnf (E.Op o x' y)
-        E.Op o x (E.Strict y) -> eval y >>= \y' -> whnf (E.Op o x y')
-        E.Op o x y ->
-            tryBeta (E.Ident o) x >>= \case
-                I.Builtin f' -> f' y
-                I.Const e -> tryBeta e y >>= tryWhnf
-        x -> pure $ I.Const x
+whnf = \case
+    E.Strict e -> I.Const <$> eval e
+    E.App f (E.Strict x) -> eval x >>= whnf . E.App f
+    E.App f x ->
+        whnf f >>= \case
+            I.Builtin f' -> f' x
+            I.Const e -> tryBeta e x >>= tryWhnf
+    E.Op o (E.Strict x) y -> eval x >>= \x' -> whnf (E.Op o x' y)
+    E.Op o x (E.Strict y) -> eval y >>= \y' -> whnf (E.Op o x y')
+    E.Op o x y ->
+        tryBeta (E.Ident o) x >>= \case
+            I.Builtin f' -> f' y
+            I.Const e -> tryBeta e y >>= tryWhnf
+    x -> pure $ I.Const x
   where
     tryWhnf = \case
         f@(I.Builtin _) -> pure f
@@ -88,7 +87,7 @@ whnfConstDef x d f =
         I.Const x' -> f x'
 
 eval :: (Monad m) => E.Expr -> I.InterT m E.Expr
-eval x = case x of
+eval = \case
     E.Undefined -> I.throwE "Unable to evaluate undefined"
     E.Strict e -> eval e
     b@(E.Bool{}) -> pure b
