@@ -78,7 +78,7 @@ myShow :: E.Expr -> I.InterT IO String
 myShow =
     \case
         E.Undefined -> I.eval E.Undefined >>= myShow
-        E.Strict e -> myShow e
+        E.Strict e -> myShow e <&> \e' -> "~(" <> e' <> ")"
         E.Bool b -> pure $ show b
         E.Unit -> pure "Unit"
         E.Z x -> pure $ show x
@@ -95,7 +95,7 @@ myShow =
 showAbs :: E.Expr -> I.InterT IO String
 showAbs = \case
     E.Undefined -> I.eval E.Undefined >>= showAbs
-    E.Strict e -> showAbs e
+    E.Strict e -> showAbs e <&> \e' -> "~(" <> e' <> ")"
     E.Bool b -> pure $ show b
     E.Unit -> pure "Unit"
     E.Z x -> pure $ show x
