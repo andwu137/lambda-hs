@@ -239,12 +239,12 @@ app =
 
     sidedOper = P.try sidedOperL <|> sidedOperR
     sidedOperL = do
-        t <- term
+        t <- app
         o <- oper
         pure $ Abs "x" (o t (Ident "x"))
     sidedOperR = do
         o <- oper
-        Abs "x" . o (Ident "x") <$> term
+        Abs "x" . o (Ident "x") <$> app
 
 abs :: Parser Expr
 abs =
