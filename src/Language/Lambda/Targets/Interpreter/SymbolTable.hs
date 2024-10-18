@@ -80,7 +80,7 @@ myShow =
         E.Undefined -> I.eval E.Undefined >>= myShow
         E.Strict e -> myShow e
         E.Bool b -> pure $ show b
-        E.Unit -> pure $ show ()
+        E.Unit -> pure "Unit"
         E.Z x -> pure $ show x
         E.R x -> pure $ show x
         E.String x -> pure x
