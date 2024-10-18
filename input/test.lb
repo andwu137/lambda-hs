@@ -19,6 +19,7 @@ cons x y t d = t x y;
 
 embedList f c t d = c (\x y -> t x (f y)) d;
 
+map f = cataR (cons . f) nil;
 cataL f d l = l (\x y -> cataL f ~(f d x) y) d;
 cataR f d l = l (\x y -> f x (cataR f d y)) d;
 anaR c i = embedList (anaR c) (c i);
