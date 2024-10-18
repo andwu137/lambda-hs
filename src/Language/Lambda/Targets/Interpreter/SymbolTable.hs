@@ -92,12 +92,12 @@ myShow =
         a@(E.App{}) -> myShow =<< I.eval a
         o@(E.Op{}) -> myShow =<< I.eval o
 
-showAbs :: E.Expr -> I.InterT IO [Char]
+showAbs :: E.Expr -> I.InterT IO String
 showAbs = \case
     E.Undefined -> I.eval E.Undefined >>= showAbs
     E.Strict e -> showAbs e
     E.Bool b -> pure $ show b
-    E.Unit -> pure $ show ()
+    E.Unit -> pure "Unit"
     E.Z x -> pure $ show x
     E.R x -> pure $ show x
     E.String x -> pure x
