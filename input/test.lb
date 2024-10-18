@@ -23,7 +23,7 @@ cataL f d l = l (\x y -> cataL f ~(f d x) y) d;
 cataR f d l = l (\x y -> f x (cataR f d y)) d;
 anaR c i = embedList (anaR c) (c i);
 
-hylo i c f d = cataL f d ~$ anaR c i;
+hylo c i f d = cataL f d ~$ anaR c i;
 {- end List -}
 
 range start end step = anaR (\x -> if (end x) nil ~$ cons x (step x)) start;
