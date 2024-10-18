@@ -46,9 +46,9 @@ data Output m
     = Builtin (E.Expr -> InterT m (Output m))
     | Const E.Expr
 
-debugSymbolTable :: M.Map T.Text (Output m) -> M.Map T.Text E.Expr
+debugSymbolTable :: SymbolTable m -> M.Map T.Text E.Expr
 debugSymbolTable = fmap $ \case
-    Builtin _ -> E.Ident "Built-In"
+    Builtin _ -> E.String "Built-In"
     Const c -> c
 
 {- Inter -}

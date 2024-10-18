@@ -8,8 +8,9 @@ module Language.Lambda.Targets.Interpreter (
     loopInterpreter,
 ) where
 
-import Control.Monad (forM)
+import Control.Monad (forM, forM_)
 import Control.Monad.IO.Class (MonadIO (..))
+import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Language.Lambda.Expr as E
 import qualified Language.Lambda.Targets.Interpreter.Core as I
@@ -21,6 +22,16 @@ import Prelude hiding (div, lookup)
 
 printError :: T.Text -> IO ()
 printError = putStrLn . unlines . fmap (">>> " <>) . lines . T.unpack
+
+prettyDebugSymbolTable :: I.InterT IO ()
+prettyDebugSymbolTable = do
+    st <- I.get
+    forM_
+        (M.toList $ I.debugSymbolTable st)
+        ( \(k, e) -> do
+            e' <- I.myShow e
+            liftIO . putStrLn $ ">>> " <> T.unpack k <> ": " <> e'
+        )
 
 data InterConfig
     = InterConfig
