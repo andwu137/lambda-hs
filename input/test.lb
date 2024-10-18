@@ -24,6 +24,8 @@ cataL f d l = l (\x y -> cataL f ~(f d x) y) d;
 cataR f d l = l (\x y -> f x (cataR f d y)) d;
 anaR c i = embedList (anaR c) (c i);
 
+printList = cataL (k print) Unit;
+
 hylo c i f d = cataL f d ~$ anaR c i;
 {- end List -}
 
