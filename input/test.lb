@@ -15,8 +15,8 @@ negate = (0-);
 
 {- module List -}
 nil t d = d;
-
 cons x y t d = t x y;
+
 embedList f c t d = c (\x y -> t x (f y)) d;
 
 cataL f d l = l (\x y -> cataL f ~(f x d) y) d;
