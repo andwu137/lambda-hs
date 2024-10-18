@@ -26,7 +26,7 @@ anaR c i = embedList (anaR c) (c i);
 hylo i c f d = cataL f d ~$ anaR c i;
 {- end List -}
 
-range start end step = hylo start (\x -> if (end x) nil ~$ cons x (step x));
+range start end step = anaR (\x -> if (end x) nil ~$ cons x (step x)) start;
 
 range' start end step bin def =
     let next = range (step start) end step bin def;
