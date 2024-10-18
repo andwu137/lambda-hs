@@ -17,6 +17,9 @@ negate = (0-);
 nil t d = d;
 cons x y t d = t x y;
 
+head d c = c k d;
+tail d c = c (flip k) d;
+
 embedList f c t d = c (\x y -> t x (f y)) d;
 
 map f = cataR (cons . f) nil;
