@@ -1,11 +1,12 @@
 module Language.Lambda.Targets.Interpreter.Core (
-    SymbolTable,
+    SymbolTable (..),
     InterConfig (..),
     Output (..),
     InterT (..),
     runInterT,
     evalInterT,
     get,
+    gets,
     put,
     modify,
     ask,
@@ -25,21 +26,26 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans (..))
 import qualified Control.Monad.Trans.Except as Except
 import qualified Control.Monad.Trans.RWS.Strict as RWST
-import Data.Functor (($>))
+import Data.Functor (($>), (<&>))
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Language.Lambda.Parser as Parser
 import Prelude hiding (lookup)
 
 {- SymbolTable -}
-type SymbolTable m = Map.Map Text.Text (Output m)
+newtype SymbolTable m
+    = SymbolTable
+    { getSymbolTable :: Map.Map Text.Text (Output m)
+    }
 
-fromList :: (Monad m) => [(Text.Text, Output m)] -> InterT m (Map.Map Text.Text (Output m))
+fromList :: (Monad m) => [(Text.Text, Output m)] -> InterT m (SymbolTable m)
 fromList st =
-    sequence $
-        Map.fromListWithKey
-            errorDuplicateSymbolBound
-            (fmap (InterT . pure) <$> st)
+    SymbolTable
+        <$> sequence
+            ( Map.fromListWithKey
+                errorDuplicateSymbolBound
+                (fmap (InterT . pure) <$> st)
+            )
 
 errorDuplicateSymbolBound :: (Monad m) => Text.Text -> p1 -> p2 -> InterT m a
 errorDuplicateSymbolBound k _ _ = throwE $ "unexpected duplicate symbol bound: " <> k
@@ -49,17 +55,18 @@ data Output m
     | Const !Parser.Expr
 
 debugSymbolTable :: SymbolTable m -> Map.Map Text.Text Parser.Expr
-debugSymbolTable = fmap $ \case
-    Builtin _ -> Parser.String "built-in"
-    Const c -> c
+debugSymbolTable (SymbolTable st) =
+    st <&> \case
+        Builtin _ -> Parser.String "built-in"
+        Const c -> c
 
 data InterConfig
     = InterConfig
-    { replName :: String
-    , inputPrefix :: String
-    , inputPostfix :: String
-    , returnPrefix :: String
-    , returnPostfix :: String
+    { replName :: !String
+    , inputPrefix :: !String
+    , inputPostfix :: !String
+    , returnPrefix :: !String
+    , returnPostfix :: !String
     }
     deriving (Show, Eq)
 
@@ -80,6 +87,9 @@ instance MonadTrans InterT where
     lift mx = InterT $ RWST.RWST $ \_conf st ->
         Except.ExceptT $ Right . (,st,()) <$> mx
 
+gets :: (Monad m) => (SymbolTable m -> b) -> InterT m b
+gets f = f <$> get
+
 get :: (Monad m) => InterT m (SymbolTable m)
 get = InterT RWST.get
 
@@ -93,24 +103,26 @@ ask :: (Monad m) => InterT m InterConfig
 ask = InterT RWST.ask
 
 union :: (Monad m) => SymbolTable m -> InterT m ()
-union st2 = do
-    st1 <- get
+union (SymbolTable st2) = do
+    st1 <- gets getSymbolTable
     st' <-
         sequence $
             Map.unionWithKey
                 errorDuplicateSymbolBound
                 (InterT . pure <$> st1)
                 (InterT . pure <$> st2)
-    put st'
+    put (SymbolTable st')
 
 insert :: (Monad m) => Text.Text -> Output m -> InterT m ()
 insert k x = union =<< fromList [(k, x)]
 
 unionReplace :: (Monad m) => SymbolTable m -> InterT m ()
-unionReplace = modify . Map.union
+unionReplace (SymbolTable st) =
+    modify $ SymbolTable . Map.union st . getSymbolTable
 
 insertReplace :: (Monad m) => Text.Text -> Output m -> InterT m ()
-insertReplace k x = modify $ Map.insert k x
+insertReplace k x =
+    modify $ SymbolTable . Map.insert k x . getSymbolTable
 
 throwE :: (Monad m) => Text.Text -> InterT m a
 throwE = InterT . lift . Except.throwE
@@ -148,6 +160,6 @@ evalInterT i conf st =
 
 lookup :: (Monad m) => Text.Text -> InterT m (Output m)
 lookup sym = do
-    get >>= \st -> case sym `Map.lookup` st of
+    gets (Map.lookup sym . getSymbolTable) >>= \case
         Nothing -> throwE $ "symbol does not exist: " <> sym
         Just x -> pure x

@@ -25,23 +25,24 @@ import qualified Prelude hiding (lookup)
 
 defaultSymbolTable :: I.SymbolTable IO
 defaultSymbolTable =
-    Map.fromList
-        [ ("print", I.Builtin myPrint)
-        , ("putStrLn", I.Builtin myPutStrLn)
-        , ("show", I.Builtin $ fmap (I.Const . Parser.String) . myShow)
-        , ("printId", I.Builtin printId)
-        , ("+", I.Builtin $ curry2 add)
-        , ("-", I.Builtin $ curry2 sub)
-        , ("*", I.Builtin $ curry2 mul)
-        , ("/", I.Builtin $ curry2 div)
-        , ("if", I.Builtin if')
-        , ("<", I.Builtin $ curry2 $ cmp (<))
-        , ("<=", I.Builtin $ curry2 $ cmp (<=))
-        , (">", I.Builtin $ curry2 $ cmp (>))
-        , (">=", I.Builtin $ curry2 $ cmp (>=))
-        , ("==", I.Builtin $ curry2 $ cmp (==))
-        , ("/=", I.Builtin $ curry2 $ cmp (/=))
-        ]
+    I.SymbolTable $
+        Map.fromList
+            [ ("print", I.Builtin myPrint)
+            , ("putStrLn", I.Builtin myPutStrLn)
+            , ("show", I.Builtin $ fmap (I.Const . Parser.String) . myShow)
+            , ("printId", I.Builtin printId)
+            , ("+", I.Builtin $ curry2 add)
+            , ("-", I.Builtin $ curry2 sub)
+            , ("*", I.Builtin $ curry2 mul)
+            , ("/", I.Builtin $ curry2 div)
+            , ("if", I.Builtin if')
+            , ("<", I.Builtin $ curry2 $ cmp (<))
+            , ("<=", I.Builtin $ curry2 $ cmp (<=))
+            , (">", I.Builtin $ curry2 $ cmp (>))
+            , (">=", I.Builtin $ curry2 $ cmp (>=))
+            , ("==", I.Builtin $ curry2 $ cmp (==))
+            , ("/=", I.Builtin $ curry2 $ cmp (/=))
+            ]
   where
     cmp f x y = do
         x' <- I.eval x
