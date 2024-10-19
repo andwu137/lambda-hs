@@ -34,7 +34,8 @@ prettyDebugSymbolTable = do
 
 data InterConfig
     = InterConfig
-    { inputPrefix :: String
+    { replName :: String
+    , inputPrefix :: String
     , inputPostfix :: String
     , returnPrefix :: String
     , returnPostfix :: String
@@ -68,12 +69,20 @@ runFile conf filename inp = do
     case Parser.parse Parser.lambdaFile filename inp of
         Left e -> I.throwE $ Text.pack $ Parser.errorBundlePretty e
         Right r -> do
-            st <- forM r $ \case
+            st <- forM r $ \(sp, s) -> case s of
                 Parser.Assign x y -> pure (x, I.Const y)
                 Parser.Effect x -> do
                     x' <- Text.pack <$> display conf x
-                    I.throwE $ "Unexpected: " <> x'
+                    I.throwE $ err sp <> "unexpected: " <> x'
             I.union =<< I.fromList st
+  where
+    err (Parser.SourcePos{..}) =
+        Text.unlines
+            [ Text.pack sourceName
+            , Text.pack $
+                (show sourceLine <> ":")
+                    <> (show sourceColumn <> ":")
+            ]
 
 loopInterpreter :: InterConfig -> I.InterT IO ()
 loopInterpreter conf@(InterConfig{inputPrefix, inputPostfix}) =
@@ -86,10 +95,10 @@ loopInterpreter conf@(InterConfig{inputPrefix, inputPostfix}) =
         go
 
 handleLine :: InterConfig -> Text.Text -> I.InterT IO ()
-handleLine conf s =
-    case Parser.parse (Parser.skip *> Parser.lambdaLine <* Parser.eof) "lambda-interpreter" s of
+handleLine conf@(InterConfig{replName}) s =
+    case Parser.parse (Parser.skip *> Parser.lambdaLine <* Parser.eof) replName s of
         Left e -> do
-            case Parser.parse (Parser.skip <* Parser.eof) "lambda-interpreter" s of
+            case Parser.parse (Parser.skip <* Parser.eof) replName s of
                 Left _ -> I.throwE . Text.pack $ Parser.errorBundlePretty e
                 Right _ -> pure ()
         Right x -> handleStatement conf x

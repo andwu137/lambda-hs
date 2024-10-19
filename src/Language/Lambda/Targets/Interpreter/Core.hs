@@ -40,7 +40,7 @@ fromList st =
             (fmap (InterT . pure) <$> st)
 
 errorDuplicateSymbolBound :: (Monad m) => Text.Text -> p1 -> p2 -> InterT m a
-errorDuplicateSymbolBound k _ _ = throwE $ "Unexpected duplicate symbol bound: " <> k
+errorDuplicateSymbolBound k _ _ = throwE $ "unexpected duplicate symbol bound: " <> k
 
 data Output m
     = Builtin (Parser.Expr -> InterT m (Output m))
@@ -48,7 +48,7 @@ data Output m
 
 debugSymbolTable :: SymbolTable m -> Map.Map Text.Text Parser.Expr
 debugSymbolTable = fmap $ \case
-    Builtin _ -> Parser.String "Built-In"
+    Builtin _ -> Parser.String "built-in"
     Const c -> c
 
 {- Inter -}
@@ -108,5 +108,5 @@ evalInterT i st = Except.runExceptT . flip State.evalStateT st . unInterT $ i
 lookup :: (Monad m) => Text.Text -> InterT m (Output m)
 lookup sym = do
     get >>= \st -> case sym `Map.lookup` st of
-        Nothing -> throwE $ "Symbol does not exist: " <> sym
+        Nothing -> throwE $ "symbol does not exist: " <> sym
         Just x -> pure x

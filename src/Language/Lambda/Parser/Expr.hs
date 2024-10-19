@@ -260,8 +260,8 @@ args =
             <$> P.many (lexeme strIdent)
 
 {- Statements -}
-lambdaFile :: Parser [Statement]
-lambdaFile = lambdaFile' <* P.eof
+lambdaFile :: Parser [(P.SourcePos, Statement)]
+lambdaFile = P.many ((,) <$> P.getSourcePos <*> assign) <* P.eof
 
 lambdaFile' :: Parser [Statement]
 lambdaFile' = P.many assign

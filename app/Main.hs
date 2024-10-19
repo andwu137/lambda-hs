@@ -7,7 +7,8 @@ import qualified System.IO as SysIO
 conf :: InterConfig
 conf =
     InterConfig
-        { inputPrefix = "λ> "
+        { replName = "lambda-interpreter"
+        , inputPrefix = "λ> "
         , returnPrefix = "β> "
         , inputPostfix = ""
         , returnPostfix = "\n\n"
