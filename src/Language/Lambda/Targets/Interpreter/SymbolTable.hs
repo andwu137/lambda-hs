@@ -34,7 +34,7 @@ defaultSymbolTable =
         , ("-", I.Builtin $ curry2 sub)
         , ("*", I.Builtin $ curry2 mul)
         , ("/", I.Builtin $ curry2 div)
-        , ("if", I.Builtin $ curry3 if')
+        , ("if", I.Builtin if')
         , ("<", I.Builtin $ curry2 $ cmp (<))
         , ("<=", I.Builtin $ curry2 $ cmp (<=))
         , (">", I.Builtin $ curry2 $ cmp (>))
@@ -56,11 +56,16 @@ curry3 f x = pure $ I.Builtin $ \y -> pure $ I.Builtin $ \z -> f x y z
 
 cast = undefined -- TODO: cast function
 
-if' :: E.Expr -> E.Expr -> E.Expr -> I.InterT IO (I.Output IO)
-if' b x y = do
+if' :: E.Expr -> I.InterT IO (I.Output IO)
+if' b = do
     b' <- I.eval b
     case b' of
-        (E.Bool p) -> pure $ if p then I.Const x else I.Const y
+        (E.Bool p) -> do
+            let (t, f) = ("t", "f")
+                bool = E.Abs t . E.Abs f
+                true = bool $ E.Ident t
+                false = bool $ E.Ident f
+            pure . I.Const $ if p then true else false
         _ -> I.throwE "if: Expected boolean for condition"
 
 printId :: E.Expr -> I.InterT IO (I.Output IO)
