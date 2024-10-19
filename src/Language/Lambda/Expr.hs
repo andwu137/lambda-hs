@@ -26,15 +26,15 @@ data Statement
 data Expr
     = Unit
     | Undefined
-    | Ident T.Text
-    | Z Integer
-    | R Double
-    | String String
-    | Bool Bool
-    | Abs T.Text Expr
-    | App Expr Expr
-    | Op T.Text Expr Expr
-    | Strict Expr
+    | Ident !T.Text
+    | Z !Integer
+    | R !Double
+    | String !String
+    | Bool !Bool
+    | Abs !T.Text !Expr
+    | App !Expr !Expr
+    | Op !T.Text !Expr !Expr
+    | Strict !Expr
     deriving (Show, Eq, Ord)
 
 {- Helpers -}

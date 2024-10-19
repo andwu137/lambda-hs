@@ -47,6 +47,7 @@ library:
     , RecordWildCards
     , NamedFieldPuns
     , LambdaCase
+    , BangPatterns
 
 executables:
   lambda-hs-exe:
