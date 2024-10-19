@@ -36,7 +36,9 @@ prettyDebugSymbolTable = do
 data InterConfig
     = InterConfig
     { inputPrefix :: String
+    , inputPostfix :: String
     , returnPrefix :: String
+    , returnPostfix :: String
     }
     deriving (Show, Eq)
 
@@ -70,18 +72,18 @@ runFile conf filename inp = do
             st <- forM r $ \case
                 E.Assign x y -> pure (x, I.Const y)
                 E.Effect x -> do
-                    x' <- display conf x
+                    x' <- T.pack <$> display conf x
                     I.throwE $ "Unexpected: " <> x'
             I.union =<< I.fromList st
 
 loopInterpreter :: InterConfig -> I.InterT IO ()
-loopInterpreter conf@(InterConfig{inputPrefix}) =
+loopInterpreter conf@(InterConfig{inputPrefix, inputPostfix}) =
     go
   where
     go = do
-        liftIO $ putStr inputPrefix
-        liftIO (T.pack <$> getLine) >>= \line ->
-            I.catchE (handleLine conf line) $ liftIO . printError
+        let wrapInput m = putStr inputPrefix *> m <* putStr inputPostfix
+        line <- liftIO . wrapInput $ T.pack <$> getLine
+        I.catchE (handleLine conf line) $ liftIO . printError
         go
 
 handleLine :: InterConfig -> T.Text -> I.InterT IO ()
@@ -96,7 +98,8 @@ handleStatement c = \case
     E.Effect x ->
         I.whnf x >>= \case
             I.Builtin _ -> I.throwE "Unable to print built-in"
-            I.Const e -> liftIO . putStrLn . T.unpack =<< display c e
+            I.Const e -> liftIO . putStr =<< display c e
 
-display :: InterConfig -> E.Expr -> I.InterT IO T.Text
-display (InterConfig{returnPrefix}) x = T.pack . (returnPrefix <>) <$> I.myShow x
+display :: InterConfig -> E.Expr -> I.InterT IO String
+display (InterConfig{returnPrefix, returnPostfix}) x =
+    (\s -> returnPrefix <> s <> returnPostfix) <$> I.myShow x

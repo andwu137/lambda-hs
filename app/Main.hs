@@ -9,6 +9,8 @@ conf =
     InterConfig
         { inputPrefix = "λ> "
         , returnPrefix = "β> "
+        , inputPostfix = ""
+        , returnPostfix = "\n\n"
         }
 
 main :: IO ()
