@@ -1,5 +1,6 @@
 module Language.Lambda.Targets.Interpreter.Core (
     SymbolTable,
+    InterConfig (..),
     Output (..),
     InterT (..),
     runInterT,
@@ -7,6 +8,7 @@ module Language.Lambda.Targets.Interpreter.Core (
     get,
     put,
     modify,
+    ask,
     union,
     unionReplace,
     insert,
@@ -22,7 +24,7 @@ import Control.Applicative (Alternative)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans (..))
 import qualified Control.Monad.Trans.Except as Except
-import qualified Control.Monad.Trans.State as State
+import qualified Control.Monad.Trans.RWS.Strict as RWST
 import Data.Functor (($>))
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
@@ -51,23 +53,44 @@ debugSymbolTable = fmap $ \case
     Builtin _ -> Parser.String "built-in"
     Const c -> c
 
+data InterConfig
+    = InterConfig
+    { replName :: String
+    , inputPrefix :: String
+    , inputPostfix :: String
+    , returnPrefix :: String
+    , returnPostfix :: String
+    }
+    deriving (Show, Eq)
+
 {- Inter -}
 newtype InterT m a
-    = InterT {unInterT :: State.StateT (SymbolTable m) (Except.ExceptT Text.Text m) a}
+    = InterT
+    { unInterT ::
+        RWST.RWST
+            InterConfig
+            ()
+            (SymbolTable m)
+            (Except.ExceptT Text.Text m)
+            a
+    }
     deriving (Functor, Applicative, Monad, Alternative, MonadIO)
 
 instance MonadTrans InterT where
-    lift mx = InterT $ State.StateT $ \y -> do
-        Except.ExceptT $ Right . (,y) <$> mx
+    lift mx = InterT $ RWST.RWST $ \_conf st ->
+        Except.ExceptT $ Right . (,st,()) <$> mx
 
 get :: (Monad m) => InterT m (SymbolTable m)
-get = InterT State.get
+get = InterT RWST.get
 
 put :: (Monad m) => SymbolTable m -> InterT m ()
-put = InterT . State.put
+put = InterT . RWST.put
 
 modify :: (Monad m) => (SymbolTable m -> SymbolTable m) -> InterT m ()
-modify = InterT . State.modify
+modify = InterT . RWST.modify
+
+ask :: (Monad m) => InterT m InterConfig
+ask = InterT RWST.ask
 
 union :: (Monad m) => SymbolTable m -> InterT m ()
 union st2 = do
@@ -94,16 +117,34 @@ throwE = InterT . lift . Except.throwE
 
 catchE :: (Monad m) => InterT m a -> (Text.Text -> InterT m a) -> InterT m a
 catchE x f = do
-    res <- lift . runInterT x =<< get
+    conf <- ask
+    st <- get
+    res <- lift $ runInterT x conf st
     case res of
         Left e -> f e
-        Right (a, st) -> put st $> a
+        Right (a, st') -> put st' $> a
 
-runInterT :: InterT m a -> SymbolTable m -> m (Either Text.Text (a, SymbolTable m))
-runInterT i st = Except.runExceptT . flip State.runStateT st . unInterT $ i
+runInterT ::
+    (Monad m) =>
+    InterT m a ->
+    InterConfig ->
+    SymbolTable m ->
+    m (Either Text.Text (a, SymbolTable m))
+runInterT i conf st =
+    Except.runExceptT $ dropWriter <$> RWST.runRWST (unInterT i) conf st
+  where
+    dropWriter (r, s, _) = (r, s)
 
-evalInterT :: (Monad m) => InterT m a -> SymbolTable m -> m (Either Text.Text a)
-evalInterT i st = Except.runExceptT . flip State.evalStateT st . unInterT $ i
+evalInterT ::
+    (Monad m) =>
+    InterT m a ->
+    InterConfig ->
+    SymbolTable m ->
+    m (Either Text.Text a)
+evalInterT i conf st =
+    Except.runExceptT $ dropWriter <$> RWST.evalRWST (unInterT i) conf st
+  where
+    dropWriter (s, _) = s
 
 lookup :: (Monad m) => Text.Text -> InterT m (Output m)
 lookup sym = do

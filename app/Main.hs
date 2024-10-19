@@ -1,17 +1,17 @@
 module Main (main) where
 
-import Language.Lambda.Targets.Interpreter (InterConfig (..), runInterpreter, runloopInterpreter)
+import qualified Language.Lambda.Targets.Interpreter as I
 import qualified System.Environment as SysEnv
 import qualified System.IO as SysIO
 
-conf :: InterConfig
+conf :: I.InterConfig
 conf =
-    InterConfig
-        { replName = "lambda-interpreter"
-        , inputPrefix = "λ> "
-        , returnPrefix = "β> "
-        , inputPostfix = ""
-        , returnPostfix = "\n\n"
+    I.InterConfig
+        { I.replName = "lambda-interpreter"
+        , I.inputPrefix = "λ> "
+        , I.returnPrefix = "β> "
+        , I.inputPostfix = ""
+        , I.returnPostfix = "\n\n"
         }
 
 main :: IO ()
@@ -20,7 +20,7 @@ main = do
 
     args <- SysEnv.getArgs
     case args of
-        [] -> runloopInterpreter conf
-        ["-i"] -> runloopInterpreter conf
-        ["-i", filename] -> runInterpreter conf filename
+        [] -> I.runloopInterpreter conf
+        ["-i"] -> I.runloopInterpreter conf
+        ["-i", filename] -> I.runInterpreter conf filename
         _ -> putStrLn "currently is garbage, only does '-i filename'"

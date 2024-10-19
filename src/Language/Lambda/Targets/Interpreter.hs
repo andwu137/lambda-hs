@@ -1,5 +1,6 @@
 module Language.Lambda.Targets.Interpreter (
-    InterConfig (..),
+    I.InterConfig (..),
+    I.InterT (..),
     runInterpreterSingle,
     runInterpreter,
     runloopInterpreter,
@@ -32,47 +33,37 @@ prettyDebugSymbolTable = do
             liftIO . putStrLn $ ">>> " <> Text.unpack k <> ": " <> e'
         )
 
-data InterConfig
-    = InterConfig
-    { replName :: String
-    , inputPrefix :: String
-    , inputPostfix :: String
-    , returnPrefix :: String
-    , returnPostfix :: String
-    }
-    deriving (Show, Eq)
-
-runInterpreterDefault :: I.InterT IO () -> IO ()
-runInterpreterDefault i = do
-    res <- I.evalInterT i I.defaultSymbolTable
+runInterpreterDefault :: I.InterConfig -> I.InterT IO () -> IO ()
+runInterpreterDefault conf i = do
+    res <- I.evalInterT i conf I.defaultSymbolTable
     either printError pure res
 
-runInterpreterSingle :: InterConfig -> Text.Text -> IO ()
-runInterpreterSingle conf s = runInterpreterDefault $ handleLine conf s
+runInterpreterSingle :: I.InterConfig -> Text.Text -> IO ()
+runInterpreterSingle conf s = runInterpreterDefault conf $ handleLine s
 
-runInterpreter :: InterConfig -> String -> IO ()
+runInterpreter :: I.InterConfig -> String -> IO ()
 runInterpreter conf filename =
-    runInterpreterDefault $ fileInterpreter conf filename
+    runInterpreterDefault conf $ fileInterpreter filename
 
-runloopInterpreter :: InterConfig -> IO ()
-runloopInterpreter conf = runInterpreterDefault $ loopInterpreter conf
+runloopInterpreter :: I.InterConfig -> IO ()
+runloopInterpreter conf = runInterpreterDefault conf loopInterpreter
 
-fileInterpreter :: InterConfig -> String -> I.InterT IO ()
-fileInterpreter conf filename = do
+fileInterpreter :: String -> I.InterT IO ()
+fileInterpreter filename = do
     liftIO $ hSetBuffering stdout NoBuffering
     liftIO $ hSetBuffering stdin LineBuffering
-    runFile conf filename . Text.pack =<< liftIO (readFile filename)
-    loopInterpreter conf
+    runFile filename . Text.pack =<< liftIO (readFile filename)
+    loopInterpreter
 
-runFile :: InterConfig -> String -> Text.Text -> I.InterT IO ()
-runFile conf filename inp = do
+runFile :: String -> Text.Text -> I.InterT IO ()
+runFile filename inp = do
     case Parser.parse Parser.lambdaFile filename inp of
         Left e -> I.throwE $ Text.pack $ Parser.errorBundlePretty e
         Right r -> do
             st <- forM r $ \(sp, s) -> case s of
                 Parser.Assign x y -> pure (x, I.Const y)
                 Parser.Effect x -> do
-                    x' <- Text.pack <$> display conf x
+                    x' <- Text.pack <$> display x
                     I.throwE $ err sp <> "unexpected: " <> x'
             I.union =<< I.fromList st
   where
@@ -84,33 +75,36 @@ runFile conf filename inp = do
                     <> (show sourceColumn <> ":")
             ]
 
-loopInterpreter :: InterConfig -> I.InterT IO ()
-loopInterpreter conf@(InterConfig{inputPrefix, inputPostfix}) =
+loopInterpreter :: I.InterT IO ()
+loopInterpreter =
     go
   where
     go = do
+        (I.InterConfig{inputPrefix, inputPostfix}) <- I.ask
         let wrapInput m = putStr inputPrefix *> m <* putStr inputPostfix
         line <- liftIO . wrapInput $ Text.pack <$> getLine
-        I.catchE (handleLine conf line) $ liftIO . printError
+        I.catchE (handleLine line) $ liftIO . printError
         go
 
-handleLine :: InterConfig -> Text.Text -> I.InterT IO ()
-handleLine conf@(InterConfig{replName}) s =
+handleLine :: Text.Text -> I.InterT IO ()
+handleLine s = do
+    (I.InterConfig{replName}) <- I.ask
     case Parser.parse (Parser.skip *> Parser.lambdaLine <* Parser.eof) replName s of
         Left e -> do
             case Parser.parse (Parser.skip <* Parser.eof) replName s of
                 Left _ -> I.throwE . Text.pack $ Parser.errorBundlePretty e
                 Right _ -> pure ()
-        Right x -> handleStatement conf x
+        Right x -> handleStatement x
 
-handleStatement :: InterConfig -> Parser.Statement -> I.InterT IO ()
-handleStatement c = \case
+handleStatement :: Parser.Statement -> I.InterT IO ()
+handleStatement = \case
     Parser.Assign x y -> I.insertReplace x (I.Const y)
     Parser.Effect x ->
         I.whnf x >>= \case
-            I.Builtin _ -> I.throwE "Unable to print built-in"
-            I.Const e -> liftIO . putStr =<< display c e
+            I.Builtin _ -> I.throwE "unable to print built-in"
+            I.Const e -> liftIO . putStr =<< display e
 
-display :: InterConfig -> Parser.Expr -> I.InterT IO String
-display (InterConfig{returnPrefix, returnPostfix}) x =
+display :: Parser.Expr -> I.InterT IO String
+display x = do
+    (I.InterConfig{returnPrefix, returnPostfix}) <- I.ask
     (\s -> returnPrefix <> s <> returnPostfix) <$> I.myShow x
