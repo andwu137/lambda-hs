@@ -25,7 +25,8 @@ source-repository head
 
 library
   exposed-modules:
-      Language.Lambda.Expr
+      Language.Lambda.Parser
+      Language.Lambda.Parser.Expr
       Language.Lambda.Targets.Interpreter
       Language.Lambda.Targets.Interpreter.Core
       Language.Lambda.Targets.Interpreter.Reduction

@@ -1,8 +1,8 @@
 module Main (main) where
 
 import Language.Lambda.Targets.Interpreter (InterConfig (..), runInterpreter, runloopInterpreter)
-import qualified System.Environment as SE
-import System.IO
+import qualified System.Environment as SysEnv
+import qualified System.IO as SysIO
 
 conf :: InterConfig
 conf =
@@ -15,9 +15,9 @@ conf =
 
 main :: IO ()
 main = do
-    hSetBuffering stdout NoBuffering
+    SysIO.hSetBuffering SysIO.stdout SysIO.NoBuffering
 
-    args <- SE.getArgs
+    args <- SysEnv.getArgs
     case args of
         [] -> runloopInterpreter conf
         ["-i"] -> runloopInterpreter conf

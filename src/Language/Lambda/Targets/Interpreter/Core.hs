@@ -21,92 +21,92 @@ module Language.Lambda.Targets.Interpreter.Core (
 import Control.Applicative (Alternative)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Class (MonadTrans (..))
-import qualified Control.Monad.Trans.Except as E
-import qualified Control.Monad.Trans.State as S
+import qualified Control.Monad.Trans.Except as Except
+import qualified Control.Monad.Trans.State as State
 import Data.Functor (($>))
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import qualified Language.Lambda.Expr as E
+import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
+import qualified Language.Lambda.Parser as Parser
 import Prelude hiding (lookup)
 
 {- SymbolTable -}
-type SymbolTable m = M.Map T.Text (Output m)
+type SymbolTable m = Map.Map Text.Text (Output m)
 
-fromList :: (Monad m) => [(T.Text, Output m)] -> InterT m (M.Map T.Text (Output m))
+fromList :: (Monad m) => [(Text.Text, Output m)] -> InterT m (Map.Map Text.Text (Output m))
 fromList st =
     sequence $
-        M.fromListWithKey
+        Map.fromListWithKey
             errorDuplicateSymbolBound
             (fmap (InterT . pure) <$> st)
 
-errorDuplicateSymbolBound :: (Monad m) => T.Text -> p1 -> p2 -> InterT m a
+errorDuplicateSymbolBound :: (Monad m) => Text.Text -> p1 -> p2 -> InterT m a
 errorDuplicateSymbolBound k _ _ = throwE $ "Unexpected duplicate symbol bound: " <> k
 
 data Output m
-    = Builtin (E.Expr -> InterT m (Output m))
-    | Const E.Expr
+    = Builtin (Parser.Expr -> InterT m (Output m))
+    | Const Parser.Expr
 
-debugSymbolTable :: SymbolTable m -> M.Map T.Text E.Expr
+debugSymbolTable :: SymbolTable m -> Map.Map Text.Text Parser.Expr
 debugSymbolTable = fmap $ \case
-    Builtin _ -> E.String "Built-In"
+    Builtin _ -> Parser.String "Built-In"
     Const c -> c
 
 {- Inter -}
 newtype InterT m a
-    = InterT {unInterT :: S.StateT (SymbolTable m) (E.ExceptT T.Text m) a}
+    = InterT {unInterT :: State.StateT (SymbolTable m) (Except.ExceptT Text.Text m) a}
     deriving (Functor, Applicative, Monad, Alternative, MonadIO)
 
 instance MonadTrans InterT where
-    lift mx = InterT $ S.StateT $ \y -> do
-        E.ExceptT $ Right . (,y) <$> mx
+    lift mx = InterT $ State.StateT $ \y -> do
+        Except.ExceptT $ Right . (,y) <$> mx
 
 get :: (Monad m) => InterT m (SymbolTable m)
-get = InterT S.get
+get = InterT State.get
 
 put :: (Monad m) => SymbolTable m -> InterT m ()
-put = InterT . S.put
+put = InterT . State.put
 
 modify :: (Monad m) => (SymbolTable m -> SymbolTable m) -> InterT m ()
-modify = InterT . S.modify
+modify = InterT . State.modify
 
 union :: (Monad m) => SymbolTable m -> InterT m ()
 union st2 = do
     st1 <- get
     st' <-
         sequence $
-            M.unionWithKey
+            Map.unionWithKey
                 errorDuplicateSymbolBound
                 (InterT . pure <$> st1)
                 (InterT . pure <$> st2)
     put st'
 
-insert :: (Monad m) => T.Text -> Output m -> InterT m ()
+insert :: (Monad m) => Text.Text -> Output m -> InterT m ()
 insert k x = union =<< fromList [(k, x)]
 
 unionReplace :: (Monad m) => SymbolTable m -> InterT m ()
-unionReplace = modify . M.union
+unionReplace = modify . Map.union
 
-insertReplace :: (Monad m) => T.Text -> Output m -> InterT m ()
-insertReplace k x = modify $ M.insert k x
+insertReplace :: (Monad m) => Text.Text -> Output m -> InterT m ()
+insertReplace k x = modify $ Map.insert k x
 
-throwE :: (Monad m) => T.Text -> InterT m a
-throwE = InterT . lift . E.throwE
+throwE :: (Monad m) => Text.Text -> InterT m a
+throwE = InterT . lift . Except.throwE
 
-catchE :: (Monad m) => InterT m a -> (T.Text -> InterT m a) -> InterT m a
+catchE :: (Monad m) => InterT m a -> (Text.Text -> InterT m a) -> InterT m a
 catchE x f = do
     res <- lift . runInterT x =<< get
     case res of
         Left e -> f e
         Right (a, st) -> put st $> a
 
-runInterT :: InterT m a -> SymbolTable m -> m (Either T.Text (a, SymbolTable m))
-runInterT i st = E.runExceptT . flip S.runStateT st . unInterT $ i
+runInterT :: InterT m a -> SymbolTable m -> m (Either Text.Text (a, SymbolTable m))
+runInterT i st = Except.runExceptT . flip State.runStateT st . unInterT $ i
 
-evalInterT :: (Monad m) => InterT m a -> SymbolTable m -> m (Either T.Text a)
-evalInterT i st = E.runExceptT . flip S.evalStateT st . unInterT $ i
+evalInterT :: (Monad m) => InterT m a -> SymbolTable m -> m (Either Text.Text a)
+evalInterT i st = Except.runExceptT . flip State.evalStateT st . unInterT $ i
 
-lookup :: (Monad m) => T.Text -> InterT m (Output m)
+lookup :: (Monad m) => Text.Text -> InterT m (Output m)
 lookup sym = do
-    get >>= \st -> case sym `M.lookup` st of
+    get >>= \st -> case sym `Map.lookup` st of
         Nothing -> throwE $ "Symbol does not exist: " <> sym
         Just x -> pure x

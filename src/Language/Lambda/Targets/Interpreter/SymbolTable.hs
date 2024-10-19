@@ -15,9 +15,9 @@ module Language.Lambda.Targets.Interpreter.SymbolTable (
 import Control.Monad (join, (<=<))
 import Control.Monad.Trans.Class (MonadTrans (..))
 import Data.Functor (($>), (<&>))
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
-import qualified Language.Lambda.Expr as E
+import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
+import qualified Language.Lambda.Parser as Parser
 import qualified Language.Lambda.Targets.Interpreter.Core as I
 import qualified Language.Lambda.Targets.Interpreter.Reduction as I
 import Prelude hiding (div, lookup)
@@ -25,10 +25,10 @@ import qualified Prelude hiding (lookup)
 
 defaultSymbolTable :: I.SymbolTable IO
 defaultSymbolTable =
-    M.fromList
+    Map.fromList
         [ ("print", I.Builtin myPrint)
         , ("putStrLn", I.Builtin myPutStrLn)
-        , ("show", I.Builtin $ fmap (I.Const . E.String) . myShow)
+        , ("show", I.Builtin $ fmap (I.Const . Parser.String) . myShow)
         , ("printId", I.Builtin printId)
         , ("+", I.Builtin $ curry2 add)
         , ("-", I.Builtin $ curry2 sub)
@@ -46,131 +46,131 @@ defaultSymbolTable =
     cmp f x y = do
         x' <- I.eval x
         y' <- I.eval y
-        pure $ I.Const $ E.Bool (f x' y')
+        pure $ I.Const $ Parser.Bool (f x' y')
 
-curry2 :: (Monad m) => (E.Expr -> E.Expr -> I.InterT m (I.Output m)) -> E.Expr -> I.InterT m (I.Output m)
+curry2 :: (Monad m) => (Parser.Expr -> Parser.Expr -> I.InterT m (I.Output m)) -> Parser.Expr -> I.InterT m (I.Output m)
 curry2 f = pure . I.Builtin . f
 
-curry3 :: (Monad m) => (E.Expr -> E.Expr -> E.Expr -> I.InterT m (I.Output m)) -> E.Expr -> I.InterT m (I.Output m)
+curry3 :: (Monad m) => (Parser.Expr -> Parser.Expr -> Parser.Expr -> I.InterT m (I.Output m)) -> Parser.Expr -> I.InterT m (I.Output m)
 curry3 f x = pure $ I.Builtin $ \y -> pure $ I.Builtin $ \z -> f x y z
 
 cast = undefined -- TODO: cast function
 
-if' :: E.Expr -> I.InterT IO (I.Output IO)
+if' :: Parser.Expr -> I.InterT IO (I.Output IO)
 if' b = do
     b' <- I.eval b
     case b' of
-        (E.Bool p) -> do
+        (Parser.Bool p) -> do
             let (t, f) = ("t", "f")
-                bool = E.Abs t . E.Abs f
-                true = bool $ E.Ident t
-                false = bool $ E.Ident f
+                bool = Parser.Abs t . Parser.Abs f
+                true = bool $ Parser.Ident t
+                false = bool $ Parser.Ident f
             pure . I.Const $ if p then true else false
         _ -> I.throwE "if: Expected boolean for condition"
 
-printId :: E.Expr -> I.InterT IO (I.Output IO)
+printId :: Parser.Expr -> I.InterT IO (I.Output IO)
 printId x = myPrint x $> I.Const x
 
-myPrint :: E.Expr -> I.InterT IO (I.Output IO)
-myPrint = myPutStrLn . E.String <=< myShow
+myPrint :: Parser.Expr -> I.InterT IO (I.Output IO)
+myPrint = myPutStrLn . Parser.String <=< myShow
 
-myPutStrLn :: E.Expr -> I.InterT IO (I.Output IO)
+myPutStrLn :: Parser.Expr -> I.InterT IO (I.Output IO)
 myPutStrLn = \case
-    E.String s -> lift (putStrLn s) $> I.Const E.Unit
-    x -> I.throwE $ "Input was not a string: " <> T.pack (show x)
+    Parser.String s -> lift (putStrLn s) $> I.Const Parser.Unit
+    x -> I.throwE $ "Input was not a string: " <> Text.pack (show x)
 
-myShow :: E.Expr -> I.InterT IO String
+myShow :: Parser.Expr -> I.InterT IO String
 myShow =
     \case
-        E.Undefined -> I.eval E.Undefined >>= myShow
-        E.Strict e -> myShow e <&> \e' -> "~(" <> e' <> ")"
-        E.Bool b -> pure $ show b
-        E.Unit -> pure "Unit"
-        E.Z x -> pure $ show x
-        E.R x -> pure $ show x
-        E.String x -> pure x
-        E.Ident i ->
+        Parser.Undefined -> I.eval Parser.Undefined >>= myShow
+        Parser.Strict e -> myShow e <&> \e' -> "~(" <> e' <> ")"
+        Parser.Bool b -> pure $ show b
+        Parser.Unit -> pure "Unit"
+        Parser.Z x -> pure $ show x
+        Parser.R x -> pure $ show x
+        Parser.String x -> pure x
+        Parser.Ident i ->
             I.lookup i >>= \case
-                I.Builtin _ -> showAbs $ E.Ident i
+                I.Builtin _ -> showAbs $ Parser.Ident i
                 I.Const x -> myShow x
-        a@(E.Abs{}) -> showAbs a
-        a@(E.App{}) -> myShow =<< I.eval a
-        o@(E.Op{}) -> myShow =<< I.eval o
+        a@(Parser.Abs{}) -> showAbs a
+        a@(Parser.App{}) -> myShow =<< I.eval a
+        o@(Parser.Op{}) -> myShow =<< I.eval o
 
-showAbs :: E.Expr -> I.InterT IO String
+showAbs :: Parser.Expr -> I.InterT IO String
 showAbs = \case
-    E.Undefined -> I.eval E.Undefined >>= showAbs
-    E.Strict e -> showAbs e <&> \e' -> "~(" <> e' <> ")"
-    E.Bool b -> pure $ show b
-    E.Unit -> pure "Unit"
-    E.Z x -> pure $ show x
-    E.R x -> pure $ show x
-    E.String x -> pure x
-    E.Ident i ->
-        pure . T.unpack $
-            case E.parse (E.oper' <* E.eof) "lambda-interpreter" i of
+    Parser.Undefined -> I.eval Parser.Undefined >>= showAbs
+    Parser.Strict e -> showAbs e <&> \e' -> "~(" <> e' <> ")"
+    Parser.Bool b -> pure $ show b
+    Parser.Unit -> pure "Unit"
+    Parser.Z x -> pure $ show x
+    Parser.R x -> pure $ show x
+    Parser.String x -> pure x
+    Parser.Ident i ->
+        pure . Text.unpack $
+            case Parser.parse (Parser.oper' <* Parser.eof) "lambda-interpreter" i of
                 Left _ -> i
                 Right _ -> "(" <> i <> ")"
-    E.Abs f b -> showAbs b <&> \x -> concat ["λ", T.unpack f, ". ", x]
-    E.App ml mr -> do
+    Parser.Abs f b -> showAbs b <&> \x -> concat ["λ", Text.unpack f, ". ", x]
+    Parser.App ml mr -> do
         (\l r -> concat [showParens ml l, " ", showParens mr r])
             <$> showAbs ml
             <*> showAbs mr
-    E.Op o ml mr ->
-        (\l r -> concat [showParens ml l, " ", T.unpack o, " ", showParens mr r])
+    Parser.Op o ml mr ->
+        (\l r -> concat [showParens ml l, " ", Text.unpack o, " ", showParens mr r])
             <$> showAbs ml
             <*> showAbs mr
 
 parens :: String -> String
 parens x = concat ["(", x, ")"]
 
-showParens :: E.Expr -> String -> String
+showParens :: Parser.Expr -> String -> String
 showParens = \case
-    E.Strict e -> showParens e
-    E.Op{} -> parens
-    E.App{} -> parens
-    E.Abs{} -> parens
-    E.Undefined -> id
-    E.Bool{} -> id
-    E.Unit -> id
-    E.Z{} -> id
-    E.R{} -> id
-    E.String{} -> id
-    E.Ident{} -> id
+    Parser.Strict e -> showParens e
+    Parser.Op{} -> parens
+    Parser.App{} -> parens
+    Parser.Abs{} -> parens
+    Parser.Undefined -> id
+    Parser.Bool{} -> id
+    Parser.Unit -> id
+    Parser.Z{} -> id
+    Parser.R{} -> id
+    Parser.String{} -> id
+    Parser.Ident{} -> id
 
-add :: E.Expr -> E.Expr -> I.InterT IO (I.Output IO)
+add :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
 add x y =
     join $ add' <$> I.eval x <*> I.eval y
   where
     add' = \cases
-        (E.Z a) (E.Z b) -> pure $ I.Const $ E.Z (a + b)
-        (E.R a) (E.R b) -> pure $ I.Const $ E.R (a + b)
+        (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a + b)
+        (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a + b)
         _ _ -> I.throwE "+: No matching function"
 
-mul :: E.Expr -> E.Expr -> I.InterT IO (I.Output IO)
+mul :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
 mul x y =
     join $
         mul' <$> I.eval x <*> I.eval y
   where
     mul' = \cases
-        (E.Z a) (E.Z b) -> pure $ I.Const $ E.Z (a * b)
-        (E.R a) (E.R b) -> pure $ I.Const $ E.R (a * b)
+        (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a * b)
+        (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a * b)
         _ _ -> I.throwE "*: No matching function "
 
-div :: E.Expr -> E.Expr -> I.InterT IO (I.Output IO)
+div :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
 div x y =
     join $ div' <$> I.eval x <*> I.eval y
   where
     div' = \cases
-        (E.Z a) (E.Z b) -> pure $ I.Const $ E.Z (a `Prelude.div` b)
-        (E.R a) (E.R b) -> pure $ I.Const $ E.R (a / b)
+        (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a `Prelude.div` b)
+        (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a / b)
         _ _ -> I.throwE "/: No matching function"
 
-sub :: E.Expr -> E.Expr -> I.InterT IO (I.Output IO)
+sub :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
 sub x y =
     join $ sub' <$> I.eval x <*> I.eval y
   where
     sub' = \cases
-        (E.Z a) (E.Z b) -> pure $ I.Const $ E.Z (a - b)
-        (E.R a) (E.R b) -> pure $ I.Const $ E.R (a - b)
+        (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a - b)
+        (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a - b)
         _ _ -> I.throwE "-: No matching function"

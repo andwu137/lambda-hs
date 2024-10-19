@@ -1,18 +1,16 @@
-module Language.Lambda.Expr (
-    P.parse,
+module Language.Lambda.Parser.Expr (
     Statement (..),
     Expr (..),
     expr,
     oper',
-    P.errorBundlePretty,
-    P.eof,
+    skip,
     lambdaFile,
     lambdaLine,
 ) where
 
 import Data.Foldable (Foldable (..))
 import Data.Functor (void, ($>))
-import qualified Data.Text as T
+import qualified Data.Text as Text
 import Data.Void (Void)
 import Text.Megaparsec ((<|>))
 import qualified Text.Megaparsec as P
@@ -20,24 +18,24 @@ import qualified Text.Megaparsec.Char as P
 import qualified Text.Megaparsec.Char.Lexer as L
 import Prelude hiding (abs)
 
-type Parser = P.Parsec Void T.Text
+type Parser = P.Parsec Void Text.Text
 
 data Statement
-    = Assign T.Text Expr
+    = Assign Text.Text Expr
     | Effect Expr
     deriving (Show, Eq)
 
 data Expr
     = Unit
     | Undefined
-    | Ident !T.Text
+    | Ident !Text.Text
     | Z !Integer
     | R !Double
     | String !String
     | Bool !Bool
-    | Abs !T.Text !Expr
+    | Abs !Text.Text !Expr
     | App !Expr !Expr
-    | Op !T.Text !Expr !Expr
+    | Op !Text.Text !Expr !Expr
     | Strict !Expr
     deriving (Show, Eq, Ord)
 
@@ -48,7 +46,7 @@ skip = L.space P.space1 lineComment blockComment
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme skip
 
-symbol :: T.Text -> Parser T.Text
+symbol :: Text.Text -> Parser Text.Text
 symbol = L.symbol skip
 
 chainl1 :: (P.MonadParsec e s m) => m a -> m (a -> a -> a) -> m a
@@ -63,7 +61,7 @@ chainr1 p o =
   where
     rest x = P.try (o <*> pure x <*> (p >>= rest)) <|> pure x
 
-beta :: T.Text -> Expr -> Expr -> Expr
+beta :: Text.Text -> Expr -> Expr -> Expr
 beta inpName inp = \case
     i@(Ident idt)
         | idt == inpName -> inp
@@ -84,10 +82,10 @@ lineComment = L.skipLineComment "--"
 blockComment :: Parser ()
 blockComment = L.skipBlockComment "{-" "-}"
 
-absOpen :: Parser T.Text
+absOpen :: Parser Text.Text
 absOpen = symbol "\\"
 
-absClose :: Parser T.Text
+absClose :: Parser Text.Text
 absClose = symbol "->"
 
 optionalParen :: Parser a -> Parser a
@@ -109,41 +107,41 @@ parenRec p =
         void $ symbol ")"
         pure x
 
-strIdent :: Parser T.Text
+strIdent :: Parser Text.Text
 strIdent =
     lexeme $ standard <|> infixToPrefix
   where
     followChar = P.alphaNumChar <|> P.choice (P.char <$> ['\'', '_'])
     standard =
-        T.cons
+        Text.cons
             <$> P.lowerChar
-            <*> (T.pack <$> P.many followChar)
+            <*> (Text.pack <$> P.many followChar)
     infixToPrefix = P.between (symbol "(") (symbol ")") (operL <|> operR)
 
 oper :: Parser (Expr -> Expr -> Expr)
 oper = lexeme $ Op <$> oper'
 
-oper' :: Parser T.Text
+oper' :: Parser Text.Text
 oper' = operL <|> operR
 
-operComb :: (Foldable f) => f (Parser T.Text) -> Parser T.Text
+operComb :: (Foldable f) => f (Parser Text.Text) -> Parser Text.Text
 operComb ps = do
     o <-
-        lexeme . fmap T.concat . P.some $
+        lexeme . fmap Text.concat . P.some $
             P.choice ps
     if o `notElem` reservedOper
         then pure o
         else P.label "operator" P.empty
 
-operL :: Parser T.Text
+operL :: Parser Text.Text
 operL =
     P.label "operatorL" $
         operComb ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
 
-operR :: Parser T.Text
+operR :: Parser Text.Text
 operR =
     P.label "operatorR" $
-        T.cons <$> P.char '~' <*> operComb ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
+        Text.cons <$> P.char '~' <*> operComb ["!", "#", "$", "%", "&", "*", "+", ".", "/", "<", "=", ">", "?", "@", "^", "|", "-"]
 
 {- Atoms -}
 atom :: Parser Expr
@@ -202,10 +200,10 @@ r =
     P.label "R" $
         R <$> lexeme (L.signed P.empty L.float)
 
-reservedName :: [T.Text]
+reservedName :: [Text.Text]
 reservedName = ["let"]
 
-reservedOper :: [T.Text]
+reservedOper :: [Text.Text]
 reservedOper = ["="]
 
 tryStrict :: Parser Expr -> Parser Expr
@@ -262,7 +260,6 @@ args =
             <$> P.many (lexeme strIdent)
 
 {- Statements -}
--- TODO: Error messages
 lambdaFile :: Parser [Statement]
 lambdaFile = lambdaFile' <* P.eof
 
