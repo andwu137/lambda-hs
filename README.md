@@ -11,6 +11,7 @@ Sorry for not using github features for features/issues :)
 ## TODO:
 - add a test suite for the parser and evaluation
 - repl/cli
+    - add multilining
     - special commands while in the interpreter (:q, :r)
     - add more commandline options
 - evaluation:
