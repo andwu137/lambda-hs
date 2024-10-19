@@ -21,8 +21,8 @@ import Prelude hiding (abs)
 type Parser = P.Parsec Void Text.Text
 
 data Statement
-    = Assign Text.Text Expr
-    | Effect Expr
+    = Assign !Text.Text !Expr
+    | Effect !Expr
     deriving (Show, Eq)
 
 data Expr

@@ -45,8 +45,8 @@ errorDuplicateSymbolBound :: (Monad m) => Text.Text -> p1 -> p2 -> InterT m a
 errorDuplicateSymbolBound k _ _ = throwE $ "unexpected duplicate symbol bound: " <> k
 
 data Output m
-    = Builtin (Parser.Expr -> InterT m (Output m))
-    | Const Parser.Expr
+    = Builtin !(Parser.Expr -> InterT m (Output m))
+    | Const !Parser.Expr
 
 debugSymbolTable :: SymbolTable m -> Map.Map Text.Text Parser.Expr
 debugSymbolTable = fmap $ \case
