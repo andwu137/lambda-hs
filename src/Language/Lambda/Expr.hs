@@ -1,7 +1,11 @@
 module Language.Lambda.Expr (
+    P.parse,
     Statement (..),
     Expr (..),
     expr,
+    oper',
+    P.errorBundlePretty,
+    P.eof,
     lambdaFile,
     lambdaLine,
 ) where

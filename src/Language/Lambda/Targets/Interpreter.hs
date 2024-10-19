@@ -17,7 +17,6 @@ import qualified Language.Lambda.Targets.Interpreter.Core as I
 import qualified Language.Lambda.Targets.Interpreter.Reduction as I
 import qualified Language.Lambda.Targets.Interpreter.SymbolTable as I
 import System.IO
-import qualified Text.Megaparsec as P
 import Prelude hiding (div, lookup)
 
 printError :: T.Text -> IO ()
@@ -66,8 +65,8 @@ fileInterpreter conf filename = do
 
 runFile :: InterConfig -> String -> T.Text -> I.InterT IO ()
 runFile conf filename inp = do
-    case P.parse E.lambdaFile filename inp of
-        Left e -> I.throwE $ T.pack $ P.errorBundlePretty e
+    case E.parse E.lambdaFile filename inp of
+        Left e -> I.throwE $ T.pack $ E.errorBundlePretty e
         Right r -> do
             st <- forM r $ \case
                 E.Assign x y -> pure (x, I.Const y)
@@ -88,8 +87,8 @@ loopInterpreter conf@(InterConfig{inputPrefix, inputPostfix}) =
 
 handleLine :: InterConfig -> T.Text -> I.InterT IO ()
 handleLine conf s =
-    case P.parse (E.lambdaLine <* P.eof) "lambda-interpreter" s of
-        Left e -> I.throwE . T.pack $ P.errorBundlePretty e
+    case E.parse (E.lambdaLine <* E.eof) "lambda-interpreter" s of
+        Left e -> I.throwE . T.pack $ E.errorBundlePretty e
         Right x -> handleStatement conf x
 
 handleStatement :: InterConfig -> E.Statement -> I.InterT IO ()
