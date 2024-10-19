@@ -87,8 +87,11 @@ loopInterpreter conf@(InterConfig{inputPrefix, inputPostfix}) =
 
 handleLine :: InterConfig -> Text.Text -> I.InterT IO ()
 handleLine conf s =
-    case Parser.parse (Parser.lambdaLine <* Parser.eof) "lambda-interpreter" s of
-        Left e -> I.throwE . Text.pack $ Parser.errorBundlePretty e
+    case Parser.parse (Parser.skip *> Parser.lambdaLine <* Parser.eof) "lambda-interpreter" s of
+        Left e -> do
+            case Parser.parse (Parser.skip <* Parser.eof) "lambda-interpreter" s of
+                Left _ -> I.throwE . Text.pack $ Parser.errorBundlePretty e
+                Right _ -> pure ()
         Right x -> handleStatement conf x
 
 handleStatement :: InterConfig -> Parser.Statement -> I.InterT IO ()
