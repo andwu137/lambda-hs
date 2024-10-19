@@ -1,10 +1,10 @@
 # lambda-hs
 
+Sorry for not using github features for features/issues :)
+
 ## How To Run:
 - Load File with Interpreter: `stack run -- -i filename`, e.g. `stack run -- -i input/test.lb`
 - Run Interpreter: `stack run` or `stack run -- -i`
-
-Sorry for not using github features for features/issues :)
 
 ## TODO:
 - add a test suite for the parser and evaluation
