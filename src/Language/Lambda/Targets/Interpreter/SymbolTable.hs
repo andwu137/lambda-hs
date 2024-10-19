@@ -91,7 +91,7 @@ myShow =
         E.String x -> pure x
         E.Ident i ->
             I.lookup i >>= \case
-                I.Builtin _ -> pure (T.unpack i)
+                I.Builtin _ -> showAbs $ E.Ident i
                 I.Const x -> myShow x
         a@(E.Abs{}) -> showAbs a
         a@(E.App{}) -> myShow =<< I.eval a
@@ -106,7 +106,11 @@ showAbs = \case
     E.Z x -> pure $ show x
     E.R x -> pure $ show x
     E.String x -> pure x
-    E.Ident i -> pure $ T.unpack i -- TODO: Fix ident is an operator issue
+    E.Ident i ->
+        pure . T.unpack $
+            case E.parse (E.oper' <* E.eof) "lambda-interpreter" i of
+                Left _ -> i
+                Right _ -> "(" <> i <> ")"
     E.Abs f b -> showAbs b <&> \x -> concat ["λ", T.unpack f, ". ", x]
     E.App ml mr -> do
         (\l r -> concat [showParens ml l, " ", showParens mr r])

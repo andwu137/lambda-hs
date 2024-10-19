@@ -17,7 +17,6 @@ Sorry for not using github features for features/issues :)
     - Store line counts for symbols
 - operators:
     - Add precedence parsing
-    - printing
     - Allow cool syntax for definitions of infix functions
 
 ## Issues:
