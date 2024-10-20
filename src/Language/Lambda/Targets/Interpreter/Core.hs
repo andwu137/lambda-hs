@@ -84,8 +84,7 @@ newtype InterT m a
     deriving (Functor, Applicative, Monad, Alternative, MonadIO)
 
 instance MonadTrans InterT where
-    lift mx = InterT $ RWST.RWST $ \_conf st ->
-        Except.ExceptT $ Right . (,st,()) <$> mx
+    lift = InterT . lift . lift
 
 gets :: (Monad m) => (SymbolTable m -> b) -> InterT m b
 gets f = f <$> get
