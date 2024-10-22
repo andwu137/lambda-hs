@@ -57,7 +57,7 @@ curry3 f x = pure $ I.Builtin $ \y -> pure $ I.Builtin $ \z -> f x y z
 
 cast = undefined -- TODO: cast function
 
-if' :: Parser.Expr -> I.InterT IO (I.Output IO)
+if' :: (Monad m) => Parser.Expr -> I.InterT m (I.Output m)
 if' b = do
     b' <- I.eval b
     case b' of
@@ -80,7 +80,7 @@ putStrLn' = \case
     Parser.String s -> lift (putStrLn s) $> I.Const Parser.Unit
     x -> I.throwE $ "Input was not a string: " <> Text.pack (show x)
 
-show' :: Parser.Expr -> I.InterT IO String
+show' :: (Monad m) => Parser.Expr -> I.InterT m String
 show' =
     \case
         Parser.Undefined -> I.eval Parser.Undefined >>= show'
@@ -98,7 +98,7 @@ show' =
         a@(Parser.App{}) -> show' =<< I.eval a
         o@(Parser.Op{}) -> show' =<< I.eval o
 
-showAbs :: Parser.Expr -> I.InterT IO String
+showAbs :: (Monad m) => Parser.Expr -> I.InterT m String
 showAbs = \case
     Parser.Undefined -> I.eval Parser.Undefined >>= showAbs
     Parser.Strict e -> showAbs e <&> \e' -> "~(" <> e' <> ")"
@@ -139,7 +139,7 @@ showParens = \case
     Parser.String{} -> id
     Parser.Ident{} -> id
 
-add :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
+add :: (Monad m) => Parser.Expr -> Parser.Expr -> I.InterT m (I.Output m)
 add x y =
     join $ add' <$> I.eval x <*> I.eval y
   where
@@ -148,7 +148,7 @@ add x y =
         (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a + b)
         _ _ -> I.throwE "+: No matching function"
 
-mul :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
+mul :: (Monad m) => Parser.Expr -> Parser.Expr -> I.InterT m (I.Output m)
 mul x y =
     join $
         mul' <$> I.eval x <*> I.eval y
@@ -158,7 +158,7 @@ mul x y =
         (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a * b)
         _ _ -> I.throwE "*: No matching function "
 
-div :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
+div :: (Monad m) => Parser.Expr -> Parser.Expr -> I.InterT m (I.Output m)
 div x y =
     join $ div' <$> I.eval x <*> I.eval y
   where
@@ -167,7 +167,7 @@ div x y =
         (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a / b)
         _ _ -> I.throwE "/: No matching function"
 
-sub :: Parser.Expr -> Parser.Expr -> I.InterT IO (I.Output IO)
+sub :: (Monad m) => Parser.Expr -> Parser.Expr -> I.InterT m (I.Output m)
 sub x y =
     join $ sub' <$> I.eval x <*> I.eval y
   where
