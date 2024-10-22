@@ -33,9 +33,9 @@ data Expr
     | R !Double
     | String !String
     | Bool !Bool
-    | Abs !Text.Text !Expr
-    | App !Expr !Expr
-    | Op !Text.Text !Expr !Expr
+    | Abs !Text.Text Expr
+    | App Expr Expr
+    | Op !Text.Text Expr Expr
     | Strict !Expr
     deriving (Show, Eq, Ord)
 
