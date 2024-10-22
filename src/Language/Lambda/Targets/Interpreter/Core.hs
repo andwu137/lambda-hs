@@ -55,10 +55,18 @@ data Output m
     | Const !Parser.Expr
 
 debugSymbolTable :: SymbolTable m -> Map.Map Text.Text Parser.Expr
-debugSymbolTable (SymbolTable st) =
+debugSymbolTable =
+    debugSymbolTable' (Parser.String "built-in") id
+
+debugSymbolTable' ::
+    a ->
+    (Parser.Expr -> a) ->
+    SymbolTable m ->
+    Map.Map Text.Text a
+debugSymbolTable' b c (SymbolTable st) =
     st <&> \case
-        Builtin _ -> Parser.String "built-in"
-        Const c -> c
+        Builtin _ -> b
+        Const e -> c e
 
 data InterConfig
     = InterConfig
