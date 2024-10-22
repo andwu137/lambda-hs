@@ -2,9 +2,9 @@ module Language.Lambda.Targets.Interpreter.SymbolTable (
     defaultSymbolTable,
     if',
     printId,
-    myPrint,
-    myPutStrLn,
-    myShow,
+    print',
+    putStrLn',
+    show',
     showAbs,
     add,
     mul,
@@ -27,9 +27,9 @@ defaultSymbolTable :: I.SymbolTable IO
 defaultSymbolTable =
     I.SymbolTable $
         Map.fromList
-            [ ("print", I.Builtin myPrint)
-            , ("putStrLn", I.Builtin myPutStrLn)
-            , ("show", I.Builtin $ fmap (I.Const . Parser.String) . myShow)
+            [ ("print", I.Builtin print')
+            , ("putStrLn", I.Builtin putStrLn')
+            , ("show", I.Builtin $ fmap (I.Const . Parser.String) . show')
             , ("printId", I.Builtin printId)
             , ("+", I.Builtin $ curry2 add)
             , ("-", I.Builtin $ curry2 sub)
@@ -70,21 +70,21 @@ if' b = do
         _ -> I.throwE "if: Expected boolean for condition"
 
 printId :: Parser.Expr -> I.InterT IO (I.Output IO)
-printId x = myPrint x $> I.Const x
+printId x = print' x $> I.Const x
 
-myPrint :: Parser.Expr -> I.InterT IO (I.Output IO)
-myPrint = myPutStrLn . Parser.String <=< myShow
+print' :: Parser.Expr -> I.InterT IO (I.Output IO)
+print' = putStrLn' . Parser.String <=< show'
 
-myPutStrLn :: Parser.Expr -> I.InterT IO (I.Output IO)
-myPutStrLn = \case
+putStrLn' :: Parser.Expr -> I.InterT IO (I.Output IO)
+putStrLn' = \case
     Parser.String s -> lift (putStrLn s) $> I.Const Parser.Unit
     x -> I.throwE $ "Input was not a string: " <> Text.pack (show x)
 
-myShow :: Parser.Expr -> I.InterT IO String
-myShow =
+show' :: Parser.Expr -> I.InterT IO String
+show' =
     \case
-        Parser.Undefined -> I.eval Parser.Undefined >>= myShow
-        Parser.Strict e -> myShow e <&> \e' -> "~(" <> e' <> ")"
+        Parser.Undefined -> I.eval Parser.Undefined >>= show'
+        Parser.Strict e -> show' e <&> \e' -> "~(" <> e' <> ")"
         Parser.Bool b -> pure $ show b
         Parser.Unit -> pure "Unit"
         Parser.Z x -> pure $ show x
@@ -93,10 +93,10 @@ myShow =
         Parser.Ident i ->
             I.lookup i >>= \case
                 I.Builtin _ -> showAbs $ Parser.Ident i
-                I.Const x -> myShow x
+                I.Const x -> show' x
         a@(Parser.Abs{}) -> showAbs a
-        a@(Parser.App{}) -> myShow =<< I.eval a
-        o@(Parser.Op{}) -> myShow =<< I.eval o
+        a@(Parser.App{}) -> show' =<< I.eval a
+        o@(Parser.Op{}) -> show' =<< I.eval o
 
 showAbs :: Parser.Expr -> I.InterT IO String
 showAbs = \case

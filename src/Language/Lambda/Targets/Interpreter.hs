@@ -29,7 +29,7 @@ prettyDebugSymbolTable = do
     forM_
         (Map.toList $ I.debugSymbolTable st)
         ( \(k, e) -> do
-            e' <- I.myShow e
+            e' <- I.show' e
             liftIO . putStrLn $ ">>> " <> Text.unpack k <> ": " <> e'
         )
 
@@ -107,4 +107,4 @@ handleStatement = \case
 display :: Parser.Expr -> I.InterT IO String
 display x = do
     (I.InterConfig{returnPrefix, returnPostfix}) <- I.ask
-    (\s -> returnPrefix <> s <> returnPostfix) <$> I.myShow x
+    (\s -> returnPrefix <> s <> returnPostfix) <$> I.show' x
