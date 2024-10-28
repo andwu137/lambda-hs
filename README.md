@@ -21,6 +21,7 @@ Sorry for not using github features for features/issues :)
 - operators:
     - Add precedence parsing
     - Allow cool syntax for definitions of infix functions
+- add datatype to lambdaline
 
 ## Issues:
 - letexpr and expr are called during assignment parsing (performance)
