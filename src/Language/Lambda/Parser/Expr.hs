@@ -109,8 +109,11 @@ parenRec p =
         pure x
 
 strIdent :: Parser Text.Text
-strIdent =
-    lexeme $ standard <|> infixToPrefix
+strIdent = do
+    i <- lexeme $ standard <|> infixToPrefix
+    if i `notElem` reservedName
+        then pure i
+        else P.label "identifier" P.empty
   where
     followChar = P.alphaNumChar <|> P.choice (P.char <$> ['\'', '_'])
     standard =
@@ -184,12 +187,7 @@ string =
     oneChar = (P.string "\\\"" $> '"') <|> P.anySingleBut '"'
 
 ident :: Parser Expr
-ident =
-    P.label "Identifier" $ do
-        i <- strIdent
-        if i `notElem` reservedName
-            then pure $ Ident i
-            else P.label "identifier" P.empty
+ident = P.label "Identifier" $ Ident <$> strIdent
 
 z :: Parser Expr
 z =
@@ -202,7 +200,7 @@ r =
         R <$> lexeme (L.signed P.empty L.float)
 
 reservedName :: [Text.Text]
-reservedName = ["let"]
+reservedName = ["let", "Unit", "True", "False", "Undefined"]
 
 reservedOper :: [Text.Text]
 reservedOper = ["="]
