@@ -8,8 +8,9 @@ module Language.Lambda.Parser.Expr (
     lambdaLine,
 ) where
 
+import Control.Monad
 import Data.Foldable (Foldable (..))
-import Data.Functor (void, ($>))
+import Data.Functor (($>), (<&>))
 import qualified Data.Text as Text
 import Data.Void (Void)
 import Text.Megaparsec ((<|>))
@@ -114,7 +115,7 @@ strIdent =
     followChar = P.alphaNumChar <|> P.choice (P.char <$> ['\'', '_'])
     standard =
         Text.cons
-            <$> P.lowerChar
+            <$> P.letterChar
             <*> (Text.pack <$> P.many followChar)
     infixToPrefix = P.between (symbol "(") (symbol ")") (operL <|> operR)
 
@@ -261,7 +262,15 @@ args =
 
 {- Statements -}
 lambdaFile :: Parser [(P.SourcePos, Statement)]
-lambdaFile = P.many ((,) <$> P.getSourcePos <*> assign) <* P.eof
+lambdaFile =
+    join <$> go <* P.eof
+  where
+    go = P.many $ do
+        pos <- P.getSourcePos
+        fmap (pos,) <$> stmt
+
+stmt :: Parser [Statement]
+stmt = P.try (pure <$> assign) <|> datatype
 
 lambdaFile' :: Parser [Statement]
 lambdaFile' = P.many assign
@@ -277,6 +286,36 @@ assign' =
     Assign
         <$> strIdent
         <*> do
-            a <- args
+            as <- args
             void $ symbol "="
-            a <$> expr
+            as <$> expr
+
+datatype :: Parser [Statement]
+datatype = do
+    prefix <- strIdent <* symbol ":="
+    ctors <-
+        ((,) <$> strIdent <*> P.many (lexeme strIdent))
+            `P.sepBy` symbol "|"
+    void $ symbol ";"
+
+    let bodies =
+            ctors <&> \(fname, es) ->
+                let (eFunc, body) =
+                        foldl'
+                            ( \(eAcc, bAcc) e ->
+                                ( eAcc . Abs e
+                                , App bAcc (Ident e)
+                                )
+                            )
+                            (id, Ident fname)
+                            es
+                 in ( fname
+                    , eFunc
+                    , body
+                    )
+        fnames = foldl' (\acc (fname, _, _) -> acc . Abs fname) id bodies
+        as = fnames
+
+    pure $
+        bodies <&> \(fname, eFunc, body) ->
+            Assign (prefix <> fname) (eFunc $ as body)

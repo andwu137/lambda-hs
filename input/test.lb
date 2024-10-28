@@ -14,37 +14,35 @@ seq x y = k y ~(x);
 negate = (0-);
 
 {- module List -}
-nil t d = d;
-cons x y t d = t x y;
+List := Nil
+    | Cons h t;
 
-head d c = c k d;
-tail d c = c (flip k) d;
+head d l = l d k;
+tail d l = l d (flip k);
 
-embedList f c t d = c (\x y -> t x (f y)) d;
+embedList l f d t = l d ~$ \x y -> t x (f y);
 
-map f = cataR (cons . f) nil;
-cataL f d l = l (\x y -> cataL f ~(f d x) y) d;
-cataR f d l = l (\x y -> f x (cataR f d y)) d;
-anaR c i = embedList (anaR c) (c i);
+map f = cataR ListNil (ListCons . f);
+cataL d f l = l d ~$ \x y -> cataL ~(f d x) f y;
+cataR d f l = l d ~$ \x y -> f x (cataR d f y);
+anaR i c = embedList (c i) (flip anaR c);
 
-printList = cataL (k print) Unit;
+printList = cataL Unit (k print);
 
-hylo c i f d = cataR f d ~$ anaR c i;
+hylo i c d f = cataR d f ~$ anaR i c;
 {- end List -}
 
-range start end step = anaR (\x -> if (end x) nil ~$ cons x (step x)) start;
+range start end step = anaR start ~$ \x -> if (end x) ListNil ~$ ListCons x (step x);
 
-range' start end step bin def =
-    let next = range (step start) end step bin def;
-        binNext = bin start next;;
-    if (end start) def binNext;
+product = cataL 1 (*);
+sum = cataL 0 (+);
 
 fac = \x ->
     if (x==0)
         1
         (x * fac (x-1));
 
-fac' n = range n (<=1) (-1) (*) 1;
+fac' n = product ~$ range n (<=1) (-1);
 
 fib = fibHelper 0 1;
 fibHelper = \x -> \y -> \n -> if ~(n==0) x ~$ fibHelper y ~(x+y) ~(n-1);
