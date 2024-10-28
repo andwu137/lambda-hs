@@ -8,7 +8,7 @@ module Language.Lambda.Parser.Expr (
     lambdaLine,
 ) where
 
-import Control.Monad
+import Control.Monad (join, void)
 import Data.Foldable (Foldable (..))
 import Data.Functor (($>), (<&>))
 import qualified Data.Text as Text
