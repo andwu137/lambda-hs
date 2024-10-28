@@ -17,6 +17,8 @@ negate = (0-);
 List := Nil
     | Cons h t;
 
+isNil l = l True (k . k False);
+
 head d l = l d k;
 tail d l = l d (flip k);
 
