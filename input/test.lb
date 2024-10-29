@@ -34,6 +34,20 @@ printList = cataL Unit (k print);
 hylo i c d f = cataR d f ~$ anaR i c;
 {- end List -}
 
+{- module Maybe -}
+Maybe := Nothing
+    | Just a;
+
+isJust m = m False (k True);
+isNothing m = m True (k False);
+
+fromMaybe d m = m d i;
+mapMaybe f m d = m d f;
+bindMaybe m f d = m d (fromMaybe d . f);
+{- end Maybe -}
+
+safeDiv x y = if (y==0) MaybeNothing ~$ MaybeJust (x/y);
+
 range start end step = anaR start ~$ \x -> if (end x) ListNil ~$ ListCons x (step x);
 
 product = cataL 1 (*);
