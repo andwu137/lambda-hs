@@ -24,7 +24,7 @@ tail d l = l d (flip k);
 
 embedList l f d t = l d ~$ \x y -> t x (f y);
 
-map f = cataR ListNil (ListCons . f);
+mapList f = cataR ListNil (ListCons . f);
 cataL d f l = l d ~$ \x y -> cataL ~(f d x) f y;
 cataR d f l = l d ~$ \x y -> f x (cataR d f y);
 anaR i c = embedList (c i) (flip anaR c);
