@@ -145,6 +145,8 @@ add x y =
   where
     add' = \cases
         (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a + b)
+        (Parser.Z a) (Parser.R b) -> pure $ I.Const $ Parser.R (fromInteger a + b)
+        (Parser.R a) (Parser.Z b) -> pure $ I.Const $ Parser.R (a + fromInteger b)
         (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a + b)
         _ _ -> I.throwE "+: No matching function"
 
@@ -155,6 +157,8 @@ mul x y =
   where
     mul' = \cases
         (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a * b)
+        (Parser.Z a) (Parser.R b) -> pure $ I.Const $ Parser.R (fromInteger a * b)
+        (Parser.R a) (Parser.Z b) -> pure $ I.Const $ Parser.R (a * fromInteger b)
         (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a * b)
         _ _ -> I.throwE "*: No matching function "
 
@@ -164,6 +168,8 @@ div x y =
   where
     div' = \cases
         (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a `Prelude.div` b)
+        (Parser.Z a) (Parser.R b) -> pure $ I.Const $ Parser.R (fromInteger a / b)
+        (Parser.R a) (Parser.Z b) -> pure $ I.Const $ Parser.R (a / fromInteger b)
         (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a / b)
         _ _ -> I.throwE "/: No matching function"
 
@@ -173,5 +179,7 @@ sub x y =
   where
     sub' = \cases
         (Parser.Z a) (Parser.Z b) -> pure $ I.Const $ Parser.Z (a - b)
+        (Parser.Z a) (Parser.R b) -> pure $ I.Const $ Parser.R (fromInteger a - b)
+        (Parser.R a) (Parser.Z b) -> pure $ I.Const $ Parser.R (a - fromInteger b)
         (Parser.R a) (Parser.R b) -> pure $ I.Const $ Parser.R (a - b)
         _ _ -> I.throwE "-: No matching function"
