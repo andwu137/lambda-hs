@@ -19,6 +19,7 @@ import qualified Language.Lambda.Parser as Parser
 import qualified Language.Lambda.Targets.Interpreter.Core as I
 import qualified Language.Lambda.Targets.Interpreter.Reduction as I
 import qualified Language.Lambda.Targets.Interpreter.SymbolTable as I
+import Language.Lambda.Utils
 import System.IO as SysIO
 import Prelude hiding (div, lookup)
 
@@ -99,9 +100,10 @@ loadFileSymbols filename inp = do
     err (Parser.SourcePos{..}) =
         Text.unlines
             [ Text.pack sourceName
-            , Text.pack $
-                (show sourceLine <> ":")
-                    <> (show sourceColumn <> ":")
+            , Text.concat
+                [ tshow sourceLine <> ":"
+                , tshow sourceColumn <> ":"
+                ]
             ]
 
 loopInterpreter :: I.InterT IO ()

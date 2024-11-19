@@ -21,6 +21,7 @@ import qualified Data.Text.IO as Text
 import qualified Language.Lambda.Parser as Parser
 import qualified Language.Lambda.Targets.Interpreter.Core as I
 import qualified Language.Lambda.Targets.Interpreter.Reduction as I
+import Language.Lambda.Utils
 import Prelude hiding (div, lookup)
 import qualified Prelude hiding (lookup)
 
@@ -79,17 +80,17 @@ print' = putStrLn' . Parser.String <=< show'
 putStrLn' :: Parser.Expr -> I.InterT IO (I.Output IO)
 putStrLn' = \case
     Parser.String s -> lift (Text.putStrLn s) $> I.Const Parser.Unit
-    x -> I.throwE $ "Input was not a string: " <> Text.pack (show x)
+    x -> I.throwE $ "Input was not a string: " <> tshow x
 
 show' :: (Monad m) => Parser.Expr -> I.InterT m Text.Text
 show' =
     \case
         Parser.Undefined -> I.eval Parser.Undefined >>= show'
         Parser.Strict e -> show' e <&> \e' -> "~(" <> e' <> ")"
-        Parser.Bool b -> pure . Text.pack $ show b
+        Parser.Bool b -> pure $ tshow b
         Parser.Unit -> pure "Unit"
-        Parser.Z x -> pure . Text.pack $ show x
-        Parser.R x -> pure . Text.pack $ show x
+        Parser.Z x -> pure $ tshow x
+        Parser.R x -> pure $ tshow x
         Parser.String x -> pure x
         Parser.Ident i ->
             I.lookup i >>= \case
@@ -103,10 +104,10 @@ showAbs :: (Monad m) => Parser.Expr -> I.InterT m Text.Text
 showAbs = \case
     Parser.Undefined -> I.eval Parser.Undefined >>= showAbs
     Parser.Strict e -> showAbs e <&> \e' -> "~(" <> e' <> ")"
-    Parser.Bool b -> pure . Text.pack $ show b
+    Parser.Bool b -> pure $ tshow b
     Parser.Unit -> pure "Unit"
-    Parser.Z x -> pure . Text.pack $ show x
-    Parser.R x -> pure . Text.pack $ show x
+    Parser.Z x -> pure $ tshow x
+    Parser.R x -> pure $ tshow x
     Parser.String x -> pure x
     Parser.Ident i ->
         pure $
