@@ -48,7 +48,11 @@ bindMaybe m f d = m d (fromMaybe d . f);
 
 safeDiv x y = if (y==0) MaybeNothing ~$ MaybeJust (x/y);
 
-range start end step = anaR start ~$ \x -> if (end x) ListNil ~$ ListCons x (step x);
+range start end step =
+    anaR start ~$ \x ->
+        if (end x)
+            ListNil ~$
+            ListCons x (step x);
 
 product = cataL 1 (*);
 sum = cataL 0 (+);
