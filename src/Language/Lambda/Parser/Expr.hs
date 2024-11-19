@@ -200,10 +200,18 @@ r =
         R <$> lexeme (L.signed P.empty L.float)
 
 reservedName :: [Text.Text]
-reservedName = ["let", "Unit", "True", "False", "Undefined"]
+reservedName =
+    [ "let"
+    , "Unit"
+    , "True"
+    , "False"
+    , "Undefined"
+    ]
 
 reservedOper :: [Text.Text]
-reservedOper = ["="]
+reservedOper =
+    [ "="
+    ]
 
 tryStrict :: Parser Expr -> Parser Expr
 tryStrict p = (Strict <$ P.char '~' <*> p) <|> p
