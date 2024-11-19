@@ -1,6 +1,7 @@
 module_main =
     printList ~$ range 0 (>=10) (+1);
 
+{- Combinatorics -}
 s = \f -> \g -> \x -> f (g x) x;
 k = \x -> \y -> x;
 i = \x -> x;
