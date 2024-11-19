@@ -3,8 +3,11 @@
 Sorry for not using github features for features/issues :)
 
 ## How To Run:
-- Load File with Interpreter: `stack run -- -i filename`, e.g. `stack run -- -i input/test.lb`
+- Load File with Interpreter: `stack run -- -i <filename>`, e.g. `stack run -- -i input/test.lb`
 - Run Interpreter: `stack run` or `stack run -- -i`
+- Run a File's Main: `stack run -- <filename>`, e.g. `stack run -- input/test.lb`
+    - The file must contain the identifier defined in Main.hs.
+      As of writing, it is defined as `module_main`.
 
 [![asciinema: a repl example of lists](https://asciinema.org/a/QJQu6DIYp2PetuRg2XDXhtBAz.svg)](https://asciinema.org/a/QJQu6DIYp2PetuRg2XDXhtBAz?autoplay=1)
 
