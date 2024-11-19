@@ -276,13 +276,23 @@ lambdaFile =
         fmap (pos,) <$> stmt
 
 stmt :: Parser [Statement]
-stmt = P.try (pure <$> assign) <|> datatype
+stmt =
+    skip
+        *> P.choice
+            [ P.try $ pure <$> assign
+            , datatype
+            ]
 
 lambdaFile' :: Parser [Statement]
 lambdaFile' = P.many assign
 
 lambdaLine :: Parser Statement
-lambdaLine = P.try (assign' <* P.optional (symbol ";") <* P.eof) <|> (Effect <$> expr)
+lambdaLine =
+    skip
+        *> P.choice
+            [ P.try $ assign' <* P.optional (symbol ";") <* P.eof
+            , Effect <$> expr
+            ]
 
 assign :: Parser Statement
 assign = assign' <* symbol ";"
