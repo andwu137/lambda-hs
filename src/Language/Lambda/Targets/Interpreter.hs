@@ -66,7 +66,8 @@ runloopInterpreter conf = runInterpreterDefault conf loopInterpreter
 
 mainInterpreter :: I.InterT IO ()
 mainInterpreter = do
-    I.lookup "module_main" >>= \case
+    (I.InterConfig{moduleMain}) <- I.ask
+    I.lookup moduleMain >>= \case
         I.Builtin _ ->
             liftIO $ Text.putStrLn "main resolved to a builtin function"
         I.Const e -> void $ handleExpr e

@@ -76,6 +76,7 @@ data InterConfig
     , returnPrefix :: !Text.Text
     , returnPostfix :: !Text.Text
     , errorPrefix :: !Text.Text
+    , moduleMain :: !Text.Text
     }
     deriving (Show, Eq)
 

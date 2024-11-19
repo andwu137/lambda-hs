@@ -16,6 +16,7 @@ loopConf =
         , I.inputPostfix = ""
         , I.returnPostfix = "\n\n"
         , I.errorPrefix = "Error> "
+        , I.moduleMain = "module_main"
         }
 
 singleConf :: I.InterConfig
@@ -27,6 +28,7 @@ singleConf =
         , I.inputPostfix = ""
         , I.returnPostfix = ""
         , I.errorPrefix = "Error: "
+        , I.moduleMain = "module_main"
         }
 
 main :: IO ()
