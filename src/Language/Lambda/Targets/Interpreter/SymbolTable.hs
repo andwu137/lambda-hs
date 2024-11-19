@@ -101,9 +101,14 @@ show' =
         o@(Parser.Op{}) -> show' =<< I.eval o
 
 showAbs :: (Monad m) => Parser.Expr -> I.InterT m Text.Text
-showAbs = \case
-    Parser.Undefined -> I.eval Parser.Undefined >>= showAbs
-    Parser.Strict e -> showAbs e <&> \e' -> "~(" <> e' <> ")"
+showAbs e = do
+    x <- showAbs' e
+    pure ("(" <> x <> ")")
+
+showAbs' :: (Monad m) => Parser.Expr -> I.InterT m Text.Text
+showAbs' = \case
+    Parser.Undefined -> I.eval Parser.Undefined >>= showAbs'
+    Parser.Strict e -> showAbs' e <&> \e' -> "~(" <> e' <> ")"
     Parser.Bool b -> pure $ tshow b
     Parser.Unit -> pure "Unit"
     Parser.Z x -> pure $ tshow x
@@ -114,15 +119,15 @@ showAbs = \case
             case Parser.parse (Parser.oper' <* Parser.eof) "lambda-interpreter" i of
                 Left _ -> i
                 Right _ -> "(" <> i <> ")"
-    Parser.Abs f b -> showAbs b <&> \x -> Text.concat ["λ", f, ". ", x]
+    Parser.Abs f b -> showAbs' b <&> \x -> Text.concat ["λ", f, ". ", x]
     Parser.App ml mr -> do
         (\l r -> Text.concat [showParens ml l, " ", showParens mr r])
-            <$> showAbs ml
-            <*> showAbs mr
+            <$> showAbs' ml
+            <*> showAbs' mr
     Parser.Op o ml mr ->
         (\l r -> Text.concat [showParens ml l, " ", o, " ", showParens mr r])
-            <$> showAbs ml
-            <*> showAbs mr
+            <$> showAbs' ml
+            <*> showAbs' mr
 
 parens :: Text.Text -> Text.Text
 parens x = Text.concat ["(", x, ")"]
