@@ -1,3 +1,6 @@
+module_main =
+    printList ~$ range 0 (>=10) (+1);
+
 s = \f -> \g -> \x -> f (g x) x;
 k = \x -> \y -> x;
 i = \x -> x;
