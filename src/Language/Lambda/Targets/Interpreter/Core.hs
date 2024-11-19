@@ -70,11 +70,12 @@ debugSymbolTable' b c (SymbolTable st) =
 
 data InterConfig
     = InterConfig
-    { replName :: !String
-    , inputPrefix :: !String
-    , inputPostfix :: !String
-    , returnPrefix :: !String
-    , returnPostfix :: !String
+    { replName :: !Text.Text
+    , inputPrefix :: !Text.Text
+    , inputPostfix :: !Text.Text
+    , returnPrefix :: !Text.Text
+    , returnPostfix :: !Text.Text
+    , errorPrefix :: !Text.Text
     }
     deriving (Show, Eq)
 

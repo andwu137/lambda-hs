@@ -32,7 +32,7 @@ data Expr
     | Ident !Text.Text
     | Z !Integer
     | R !Double
-    | String !String
+    | String !Text.Text
     | Bool !Bool
     | Abs !Text.Text Expr
     | App Expr Expr
@@ -181,7 +181,7 @@ string =
     P.label "String" $
         lexeme $
             P.between (P.char '"') (P.char '"') $
-                String <$> innerString
+                String . Text.pack <$> innerString
   where
     innerString = P.many oneChar
     oneChar = (P.string "\\\"" $> '"') <|> P.anySingleBut '"'
@@ -286,6 +286,7 @@ stmt =
 lambdaFile' :: Parser [Statement]
 lambdaFile' = P.many assign
 
+-- TODO: statement or comment
 lambdaLine :: Parser Statement
 lambdaLine =
     skip

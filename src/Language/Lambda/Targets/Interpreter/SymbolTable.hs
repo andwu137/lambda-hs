@@ -17,6 +17,7 @@ import Control.Monad.Trans.Class (MonadTrans (..))
 import Data.Functor (($>), (<&>))
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 import qualified Language.Lambda.Parser as Parser
 import qualified Language.Lambda.Targets.Interpreter.Core as I
 import qualified Language.Lambda.Targets.Interpreter.Reduction as I
@@ -77,18 +78,18 @@ print' = putStrLn' . Parser.String <=< show'
 
 putStrLn' :: Parser.Expr -> I.InterT IO (I.Output IO)
 putStrLn' = \case
-    Parser.String s -> lift (putStrLn s) $> I.Const Parser.Unit
+    Parser.String s -> lift (Text.putStrLn s) $> I.Const Parser.Unit
     x -> I.throwE $ "Input was not a string: " <> Text.pack (show x)
 
-show' :: (Monad m) => Parser.Expr -> I.InterT m String
+show' :: (Monad m) => Parser.Expr -> I.InterT m Text.Text
 show' =
     \case
         Parser.Undefined -> I.eval Parser.Undefined >>= show'
         Parser.Strict e -> show' e <&> \e' -> "~(" <> e' <> ")"
-        Parser.Bool b -> pure $ show b
+        Parser.Bool b -> pure . Text.pack $ show b
         Parser.Unit -> pure "Unit"
-        Parser.Z x -> pure $ show x
-        Parser.R x -> pure $ show x
+        Parser.Z x -> pure . Text.pack $ show x
+        Parser.R x -> pure . Text.pack $ show x
         Parser.String x -> pure x
         Parser.Ident i ->
             I.lookup i >>= \case
@@ -98,34 +99,34 @@ show' =
         a@(Parser.App{}) -> show' =<< I.eval a
         o@(Parser.Op{}) -> show' =<< I.eval o
 
-showAbs :: (Monad m) => Parser.Expr -> I.InterT m String
+showAbs :: (Monad m) => Parser.Expr -> I.InterT m Text.Text
 showAbs = \case
     Parser.Undefined -> I.eval Parser.Undefined >>= showAbs
     Parser.Strict e -> showAbs e <&> \e' -> "~(" <> e' <> ")"
-    Parser.Bool b -> pure $ show b
+    Parser.Bool b -> pure . Text.pack $ show b
     Parser.Unit -> pure "Unit"
-    Parser.Z x -> pure $ show x
-    Parser.R x -> pure $ show x
+    Parser.Z x -> pure . Text.pack $ show x
+    Parser.R x -> pure . Text.pack $ show x
     Parser.String x -> pure x
     Parser.Ident i ->
-        pure . Text.unpack $
+        pure $
             case Parser.parse (Parser.oper' <* Parser.eof) "lambda-interpreter" i of
                 Left _ -> i
                 Right _ -> "(" <> i <> ")"
-    Parser.Abs f b -> showAbs b <&> \x -> concat ["λ", Text.unpack f, ". ", x]
+    Parser.Abs f b -> showAbs b <&> \x -> Text.concat ["λ", f, ". ", x]
     Parser.App ml mr -> do
-        (\l r -> concat [showParens ml l, " ", showParens mr r])
+        (\l r -> Text.concat [showParens ml l, " ", showParens mr r])
             <$> showAbs ml
             <*> showAbs mr
     Parser.Op o ml mr ->
-        (\l r -> concat [showParens ml l, " ", Text.unpack o, " ", showParens mr r])
+        (\l r -> Text.concat [showParens ml l, " ", o, " ", showParens mr r])
             <$> showAbs ml
             <*> showAbs mr
 
-parens :: String -> String
-parens x = concat ["(", x, ")"]
+parens :: Text.Text -> Text.Text
+parens x = Text.concat ["(", x, ")"]
 
-showParens :: Parser.Expr -> String -> String
+showParens :: Parser.Expr -> Text.Text -> Text.Text
 showParens = \case
     Parser.Strict e -> showParens e
     Parser.Op{} -> parens

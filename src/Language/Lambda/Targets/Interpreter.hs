@@ -2,17 +2,19 @@ module Language.Lambda.Targets.Interpreter (
     I.InterConfig (..),
     I.InterT (..),
     runInterpreterSingle,
-    runInterpreter,
     runloopInterpreter,
-    runFile,
+    runFileInterpreterMain,
+    runFileInterpreterLoop,
+    loadFile,
     fileInterpreter,
     loopInterpreter,
 ) where
 
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, void)
 import Control.Monad.IO.Class (MonadIO (..))
 import qualified Data.Map as Map
 import qualified Data.Text as Text
+import qualified Data.Text.IO as Text
 import qualified Language.Lambda.Parser as Parser
 import qualified Language.Lambda.Targets.Interpreter.Core as I
 import qualified Language.Lambda.Targets.Interpreter.Reduction as I
@@ -20,8 +22,12 @@ import qualified Language.Lambda.Targets.Interpreter.SymbolTable as I
 import System.IO as SysIO
 import Prelude hiding (div, lookup)
 
-printError :: Text.Text -> IO ()
-printError = putStrLn . unlines . fmap (">>> " <>) . lines . Text.unpack
+printError :: Text.Text -> Text.Text -> IO ()
+printError errPrefix =
+    Text.putStrLn
+        . Text.unlines
+        . fmap (errPrefix <>)
+        . Text.lines
 
 prettyDebugSymbolTable :: I.InterT IO ()
 prettyDebugSymbolTable = do
@@ -30,40 +36,62 @@ prettyDebugSymbolTable = do
         (Map.toList $ I.debugSymbolTable st)
         ( \(k, e) -> do
             e' <- I.show' e
-            liftIO . putStrLn $ ">>> " <> Text.unpack k <> ": " <> e'
+            liftIO . Text.putStrLn $ ">>> " <> k <> ": " <> e'
         )
 
 runInterpreterDefault :: I.InterConfig -> I.InterT IO () -> IO ()
 runInterpreterDefault conf i = do
     res <- I.evalInterT i conf I.defaultSymbolTable
-    either printError pure res
+    either (printError $ I.errorPrefix conf) pure res
 
 runInterpreterSingle :: I.InterConfig -> Text.Text -> IO ()
-runInterpreterSingle conf s = runInterpreterDefault conf $ handleLine s
+runInterpreterSingle conf s =
+    runInterpreterDefault conf $
+        handleLine s
 
-runInterpreter :: I.InterConfig -> String -> IO ()
-runInterpreter conf filename =
-    runInterpreterDefault conf $ fileInterpreter filename
+runFileInterpreterMain :: I.InterConfig -> String -> IO ()
+runFileInterpreterMain conf filename =
+    runInterpreterDefault conf $ do
+        fileInterpreter filename
+        mainInterpreter
+
+runFileInterpreterLoop :: I.InterConfig -> String -> IO ()
+runFileInterpreterLoop conf filename =
+    runInterpreterDefault conf $ do
+        fileInterpreter filename
+        loopInterpreter
 
 runloopInterpreter :: I.InterConfig -> IO ()
 runloopInterpreter conf = runInterpreterDefault conf loopInterpreter
+
+mainInterpreter :: I.InterT IO ()
+mainInterpreter = do
+    I.lookup "module_main" >>= \case
+        I.Builtin _ ->
+            liftIO $ Text.putStrLn "main resolved to a builtin function"
+        I.Const e -> void $ handleExpr e
 
 fileInterpreter :: String -> I.InterT IO ()
 fileInterpreter filename = do
     liftIO $ hSetBuffering stdout NoBuffering
     liftIO $ hSetBuffering stdin LineBuffering
-    runFile filename . Text.pack =<< liftIO (readFile filename)
-    loopInterpreter
+    loadFile filename
 
-runFile :: String -> Text.Text -> I.InterT IO ()
-runFile filename inp = do
+loadFile :: String -> I.InterT IO ()
+loadFile filename =
+    loadFileSymbols filename
+        . Text.pack
+        =<< liftIO (readFile filename)
+
+loadFileSymbols :: String -> Text.Text -> I.InterT IO ()
+loadFileSymbols filename inp = do
     case Parser.parse Parser.lambdaFile filename inp of
         Left e -> I.throwE $ Text.pack $ Parser.errorBundlePretty e
         Right r -> do
             st <- forM r $ \(sp, s) -> case s of
                 Parser.Assign x y -> pure (x, I.Const y)
                 Parser.Effect x -> do
-                    x' <- Text.pack <$> display x
+                    x' <- display x
                     I.throwE $ err sp <> "unexpected: " <> x'
             I.union =<< I.fromList st
   where
@@ -80,18 +108,25 @@ loopInterpreter =
     go
   where
     go = do
-        (I.InterConfig{inputPrefix, inputPostfix}) <- I.ask
-        let wrapInput m = putStr inputPrefix *> m <* putStr inputPostfix
+        ( I.InterConfig
+                { inputPrefix
+                , inputPostfix
+                , errorPrefix
+                }
+            ) <-
+            I.ask
+        let wrapInput m = Text.putStr inputPrefix *> m <* Text.putStr inputPostfix
         line <- liftIO . wrapInput $ Text.pack <$> getLine
-        I.catchE (handleLine line) $ liftIO . printError
+        I.catchE (handleLine line) $ liftIO . printError errorPrefix
         go
 
 handleLine :: Text.Text -> I.InterT IO ()
 handleLine s = do
     (I.InterConfig{replName}) <- I.ask
-    case Parser.parse (Parser.skip *> Parser.lambdaLine <* Parser.eof) replName s of
+    let rname = Text.unpack replName
+    case Parser.parse (Parser.lambdaLine <* Parser.eof) rname s of
         Left e -> do
-            case Parser.parse (Parser.skip <* Parser.eof) replName s of
+            case Parser.parse (Parser.skip <* Parser.eof) rname s of
                 Left _ -> I.throwE . Text.pack $ Parser.errorBundlePretty e
                 Right _ -> pure ()
         Right x -> handleStatement x
@@ -99,12 +134,17 @@ handleLine s = do
 handleStatement :: Parser.Statement -> I.InterT IO ()
 handleStatement = \case
     Parser.Assign x y -> I.insertReplace x (I.Const y)
-    Parser.Effect x ->
-        I.whnf x >>= \case
-            I.Builtin _ -> I.throwE "unable to print built-in"
-            I.Const e -> liftIO . putStr =<< display e
+    Parser.Effect x -> do
+        r <- handleExpr x
+        liftIO . Text.putStr =<< display r
 
-display :: Parser.Expr -> I.InterT IO String
+handleExpr :: Parser.Expr -> I.InterT IO Parser.Expr
+handleExpr x =
+    I.whnf x >>= \case
+        I.Builtin _ -> I.throwE "unable to print built-in"
+        I.Const e -> pure e
+
+display :: Parser.Expr -> I.InterT IO Text.Text
 display x = do
     (I.InterConfig{returnPrefix, returnPostfix}) <- I.ask
     (\s -> returnPrefix <> s <> returnPostfix) <$> I.show' x
